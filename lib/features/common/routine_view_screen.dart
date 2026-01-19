@@ -1,0 +1,95 @@
+
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../data/services/routine_service.dart';
+
+import 'package:flutter_linkify/flutter_linkify.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+class RoutineViewScreen extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text('Routines'),
+          bottom: TabBar(
+            tabs: [
+              Tab(text: 'Class Routine', icon: Icon(Icons.class_)),
+              Tab(text: 'Bus Routine', icon: Icon(Icons.directions_bus)),
+            ],
+          ),
+        ),
+        body: TabBarView(
+          children: [
+            _RoutineList(type: 'class'),
+            _RoutineList(type: 'bus'),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RoutineList extends StatelessWidget {
+  final String type;
+
+  const _RoutineList({required this.type});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: Provider.of<RoutineService>(context).getRoutines(type),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) return Center(child: CircularProgressIndicator());
+        if (!snapshot.hasData || snapshot.data!.isEmpty) return Center(child: Text('No routines found.'));
+
+        final routines = snapshot.data!;
+        return ListView.builder(
+          padding: EdgeInsets.all(12),
+          itemCount: routines.length,
+          itemBuilder: (context, index) {
+            final routine = routines[index];
+            return Container(
+              margin: EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.blue.withOpacity(0.1)),
+                boxShadow: [
+                  BoxShadow(color: Colors.blue.withOpacity(0.05), blurRadius: 10, offset: Offset(0, 4))
+                ]
+              ),
+              child: ListTile(
+                contentPadding: EdgeInsets.all(16),
+                title: Text(
+                  routine['title'] ?? '', 
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.blue.shade900)
+                ),
+                subtitle: Padding(
+                  padding: const EdgeInsets.only(top: 8.0),
+                  child: SelectableLinkify(
+                    onOpen: (link) async {
+                       final Uri url = Uri.parse(link.url);
+                       if (await canLaunchUrl(url)) {
+                         await launchUrl(url, mode: LaunchMode.externalApplication);
+                       }
+                    },
+                    text: routine['description'] ?? '',
+                    style: TextStyle(color: Colors.black87, height: 1.4),
+                    linkStyle: TextStyle(color: Colors.blue, decoration: TextDecoration.underline),
+                  ),
+                ),
+                leading: CircleAvatar(
+                  backgroundColor: Colors.blue.shade50,
+                  child: Icon(type == 'class' ? Icons.book : Icons.airport_shuttle, color: Colors.blue),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
