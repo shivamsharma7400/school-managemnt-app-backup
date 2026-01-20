@@ -31,6 +31,7 @@ import 'features/student/student_dashboard.dart'; // Placeholder
 import 'features/teacher/teacher_dashboard.dart'; // Placeholder
 import 'features/principal/principal_dashboard.dart'; // Placeholder
 import 'features/management/management_dashboard.dart';
+import 'features/driver/driver_dashboard.dart';
 import 'features/auth/pending_approval_screen.dart';
 import 'features/common/splash_screen.dart';
 
@@ -113,6 +114,8 @@ class AuthWrapper extends StatelessWidget {
         return PrincipalDashboard();
       case 'management':
         return ManagementDashboard();
+      case 'driver':
+        return DriverDashboard();
       case 'pending':
         return PendingApprovalScreen();
       default:
