@@ -18,19 +18,21 @@ class RoutineService extends ChangeNotifier {
             }).toList());
   }
 
-  Future<void> addRoutine(String title, String description, String type) async {
+  Future<void> addRoutine(String title, String description, String type, {String? imageUrl}) async {
     await _firestore.collection('routines').add({
       'title': title,
       'description': description,
       'type': type,
+      'imageUrl': imageUrl,
       'createdAt': FieldValue.serverTimestamp(),
     });
   }
 
-  Future<void> updateRoutine(String id, String title, String description) async {
+  Future<void> updateRoutine(String id, String title, String description, {String? imageUrl}) async {
     await _firestore.collection('routines').doc(id).update({
       'title': title,
       'description': description,
+      'imageUrl': imageUrl,
     });
   }
 

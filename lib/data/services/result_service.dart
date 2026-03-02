@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import '../models/result_model.dart';
+import '../models/scheduled_exam_model.dart';
 
 class ResultService extends ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -47,6 +48,33 @@ class ResultService extends ChangeNotifier {
     } catch (e) {
       print('Error fetching all results: $e');
       return [];
+    }
+  }
+
+  /// Get all scheduled exams (for dropdowns)
+  Stream<List<ScheduledExam>> getScheduledExams() {
+    return _firestore.collection('scheduled_exams')
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map((doc) => 
+            ScheduledExam.fromFirestore(doc.data() as Map<String, dynamic>, doc.id)
+        ).toList());
+  }
+
+  /// Sync result to Principal's Result Sheet (subcollection within scheduled_exams)
+  Future<void> syncResultToSheet(String examId, String classId, String studentId, Map<String, String> marks) async {
+    try {
+      await _firestore
+          .collection('scheduled_exams')
+          .doc(examId)
+          .collection('class_results')
+          .doc(classId)
+          .set({
+            studentId: marks
+          }, SetOptions(merge: true));
+    } catch (e) {
+      print('Error syncing result to sheet: $e');
+      rethrow;
     }
   }
 }

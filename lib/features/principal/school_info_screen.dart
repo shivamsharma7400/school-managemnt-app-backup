@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../data/services/school_info_service.dart';
+import '../../data/services/school_config_service.dart';
 
 class SchoolInfoScreen extends StatefulWidget {
   @override
@@ -100,7 +101,20 @@ class _SchoolInfoScreenState extends State<SchoolInfoScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Train AI (School Info)')),
+      appBar: AppBar(
+        title: Text('Train AI (School Info)', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+        iconTheme: IconThemeData(color: Colors.white),
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.indigo.shade900, Colors.deepPurple.shade900],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
+        elevation: 0,
+       ),
       body: _isLoading
           ? Center(child: CircularProgressIndicator())
           : Padding(
@@ -110,7 +124,7 @@ class _SchoolInfoScreenState extends State<SchoolInfoScreen> {
                 child: ListView(
                   children: [
                     Text(
-                      "Teach Veena AI about your school.\nThe more details you provide, the better it answers.",
+                      "Teach ${Provider.of<SchoolConfigService>(context).aiAgentName} about your school.\nThe more details you provide, the better it answers.",
                       style: TextStyle(color: Colors.grey[700], fontStyle: FontStyle.italic),
                     ),
                     SizedBox(height: 16),

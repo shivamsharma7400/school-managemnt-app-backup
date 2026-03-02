@@ -9,6 +9,8 @@ import 'package:intl/intl.dart';
 import '../../data/services/notification_service.dart';
 
 class CreateAssignmentScreen extends StatefulWidget {
+  const CreateAssignmentScreen({super.key});
+
   @override
   _CreateAssignmentScreenState createState() => _CreateAssignmentScreenState();
 }
@@ -33,42 +35,57 @@ class _CreateAssignmentScreenState extends State<CreateAssignmentScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-               _buildClassDropdown(),
-               SizedBox(height: 16),
-               TextFormField(
-                 controller: _titleController,
-                 decoration: InputDecoration(labelText: 'Title', border: OutlineInputBorder()),
-                 validator: (v) => v!.isEmpty ? 'Required' : null,
-               ),
-               SizedBox(height: 16),
-               TextFormField(
-                 controller: _subjectController,
-                 decoration: InputDecoration(labelText: 'Subject', border: OutlineInputBorder()),
-                 validator: (v) => v!.isEmpty ? 'Required' : null,
-               ),
-               SizedBox(height: 16),
-               TextFormField(
-                 controller: _descController,
-                 decoration: InputDecoration(labelText: 'Description / Instructions', border: OutlineInputBorder()),
-                 maxLines: 3,
-                 validator: (v) => v!.isEmpty ? 'Required' : null,
-               ),
-               SizedBox(height: 16),
-               ListTile(
-                 contentPadding: EdgeInsets.zero,
-                 title: Text("Due Date: ${DateFormat('EEE, d MMM y').format(_dueDate)}"),
-                 trailing: Icon(Icons.calendar_today),
-                 onTap: _pickDate,
-               ),
-               Spacer(),
-               SizedBox(
-                 width: double.infinity,
-                 child: ElevatedButton(
-                   onPressed: _isLoading ? null : _submit,
-                   child: _isLoading ? CircularProgressIndicator() : Text('Post Assignment'),
-                   style: ElevatedButton.styleFrom(padding: EdgeInsets.symmetric(vertical: 16)),
-                 ),
-               ),
+              _buildClassDropdown(),
+              SizedBox(height: 16),
+              TextFormField(
+                controller: _titleController,
+                decoration: InputDecoration(
+                  labelText: 'Title',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (v) => v!.isEmpty ? 'Required' : null,
+              ),
+              SizedBox(height: 16),
+              TextFormField(
+                controller: _subjectController,
+                decoration: InputDecoration(
+                  labelText: 'Subject',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (v) => v!.isEmpty ? 'Required' : null,
+              ),
+              SizedBox(height: 16),
+              TextFormField(
+                controller: _descController,
+                decoration: InputDecoration(
+                  labelText: 'Instructions of Homework....',
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 3,
+                validator: (v) => v!.isEmpty ? 'Required' : null,
+              ),
+              SizedBox(height: 16),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(
+                  "Due Date: ${DateFormat('EEE, d MMM y').format(_dueDate)}",
+                ),
+                trailing: Icon(Icons.calendar_today),
+                onTap: _pickDate,
+              ),
+              Spacer(),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _submit,
+                  style: ElevatedButton.styleFrom(
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                  ),
+                  child: _isLoading
+                      ? CircularProgressIndicator()
+                      : Text('Post Assignment'),
+                ),
+              ),
             ],
           ),
         ),
@@ -78,13 +95,20 @@ class _CreateAssignmentScreenState extends State<CreateAssignmentScreen> {
 
   Widget _buildClassDropdown() {
     return StreamBuilder<List<ClassModel>>(
-      stream: Provider.of<ClassService>(context).getAllClasses(), // Should filter by teacher
+      stream: Provider.of<ClassService>(
+        context,
+      ).getAllClasses(), // Should filter by teacher
       builder: (context, snapshot) {
         if (!snapshot.hasData) return LinearProgressIndicator();
         return DropdownButtonFormField<String>(
-          value: _selectedClassId,
-          decoration: InputDecoration(labelText: 'Select Class', border: OutlineInputBorder()),
-          items: snapshot.data!.map((c) => DropdownMenuItem(value: c.id, child: Text(c.name))).toList(),
+          initialValue: _selectedClassId,
+          decoration: InputDecoration(
+            labelText: 'Select Class',
+            border: OutlineInputBorder(),
+          ),
+          items: snapshot.data!
+              .map((c) => DropdownMenuItem(value: c.id, child: Text(c.name)))
+              .toList(),
           onChanged: (val) => setState(() => _selectedClassId = val),
           validator: (v) => v == null ? 'Please select a class' : null,
         );
@@ -105,13 +129,16 @@ class _CreateAssignmentScreenState extends State<CreateAssignmentScreen> {
   void _submit() async {
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
-      final teacherId = Provider.of<AuthService>(context, listen: false).user?.uid ?? '';
-      
+      final teacherId =
+          Provider.of<AuthService>(context, listen: false).user?.uid ?? '';
+
       // DEBUG: Show selected class ID in snackbar
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text("DEBUG: Posting to Class ID: '$_selectedClassId'"),
-        duration: Duration(seconds: 5),
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Sent Homework to '$_selectedClassId'"),
+          duration: Duration(seconds: 5),
+        ),
+      );
 
       final assignment = Assignment(
         id: '',
@@ -124,18 +151,24 @@ class _CreateAssignmentScreenState extends State<CreateAssignmentScreen> {
         teacherId: teacherId,
       );
 
-      await Provider.of<AssignmentService>(context, listen: false).addAssignment(assignment);
-      
+      await Provider.of<AssignmentService>(
+        context,
+        listen: false,
+      ).addAssignment(assignment);
+
       // Trigger Notification
-      final notificationService = Provider.of<NotificationService>(context, listen: false);
+      final notificationService = Provider.of<NotificationService>(
+        context,
+        listen: false,
+      );
       notificationService.sendNotificationToClass(
         _selectedClassId!,
         'New Assignment: ${_subjectController.text}',
-        '${_titleController.text} due on ${DateFormat('MMM d').format(_dueDate)}'
+        '${_titleController.text} due on ${DateFormat('MMM d').format(_dueDate)}',
       );
 
       // Removed Navigator.pop to let user see snackbar (or wait a bit)
-       await Future.delayed(Duration(seconds: 2));
+      await Future.delayed(Duration(seconds: 2));
       Navigator.pop(context);
     }
   }

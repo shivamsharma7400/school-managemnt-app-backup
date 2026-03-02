@@ -6,6 +6,7 @@ import '../../data/services/user_service.dart';
 import '../../data/services/class_service.dart';
 import '../../data/models/class_model.dart';
 import '../../data/services/auth_service.dart';
+import '../../data/models/scheduled_exam_model.dart';
 
 class ResultEntryScreen extends StatefulWidget {
   @override
@@ -17,9 +18,8 @@ class _ResultEntryScreenState extends State<ResultEntryScreen> {
   
   String? _selectedClassId;
   String? _selectedStudentId;
+  ScheduledExam? _selectedExam;
   
-  final TextEditingController _examNameController = TextEditingController();
-  final TextEditingController _grandTotalController = TextEditingController(); // Overall full marks
   final TextEditingController _rollNumberController = TextEditingController(); 
 
   // Dynamic Subjects List
@@ -35,12 +35,12 @@ class _ResultEntryScreenState extends State<ResultEntryScreen> {
     _addSubjectRow();
   }
 
-  void _addSubjectRow() {
+  void _addSubjectRow({String name = '', String full = '100'}) {
     setState(() {
       _subjectControllers.add({
-        'name': TextEditingController(),
+        'name': TextEditingController(text: name),
         'obtained': TextEditingController(),
-        'full': TextEditingController(text: '100'), // Default 100
+        'full': TextEditingController(text: full),
       });
     });
   }
@@ -54,6 +54,7 @@ class _ResultEntryScreenState extends State<ResultEntryScreen> {
   @override
   Widget build(BuildContext context) {
     final userRole = Provider.of<AuthService>(context).role;
+    final resultService = Provider.of<ResultService>(context);
     
     // Authorization Check
     if (userRole != 'management' && userRole != 'teacher') {
@@ -83,18 +84,9 @@ class _ResultEntryScreenState extends State<ResultEntryScreen> {
                  validator: (v) => v!.isEmpty ? 'Required' : null,
                ),
                SizedBox(height: 16),
-               TextFormField(
-                 controller: _examNameController,
-                 decoration: InputDecoration(labelText: 'Exam Name (e.g. Mid-Term 2026)', border: OutlineInputBorder()),
-                 validator: (v) => v!.isEmpty ? 'Required' : null,
-               ),
+               
+               _buildExamDropdown(resultService),
                SizedBox(height: 16),
-               TextFormField(
-                 controller: _grandTotalController,
-                 decoration: InputDecoration(labelText: 'Grand Total Full Marks (e.g. 500)', border: OutlineInputBorder()),
-                 keyboardType: TextInputType.number,
-                 validator: (v) => v!.isEmpty ? 'Required' : null,
-               ),
                
                SizedBox(height: 24),
                Text("Subjects", style: Theme.of(context).textTheme.titleMedium),
@@ -103,52 +95,54 @@ class _ResultEntryScreenState extends State<ResultEntryScreen> {
                ..._subjectControllers.asMap().entries.map((entry) {
                  int index = entry.key;
                  var controllers = entry.value;
-                 return Padding(
-                   padding: const EdgeInsets.only(bottom: 12.0),
-                   child: Row(
-                     children: [
-                       Expanded(
-                         flex: 3,
-                         child: TextFormField(
-                           controller: controllers['name'],
-                           decoration: InputDecoration(labelText: 'Subject Name', contentPadding: EdgeInsets.symmetric(horizontal: 8)),
-                           validator: (v) => v!.isEmpty ? 'Required' : null,
-                         ),
-                       ),
-                       SizedBox(width: 8),
-                       Expanded(
-                         flex: 2,
-                         child: TextFormField(
-                           controller: controllers['obtained'],
-                           decoration: InputDecoration(labelText: 'Obtained', contentPadding: EdgeInsets.symmetric(horizontal: 8)),
-                           keyboardType: TextInputType.number,
-                           validator: (v) => v!.isEmpty ? 'Req' : null,
-                         ),
-                       ),
-                       SizedBox(width: 8),
-                       Expanded(
-                         flex: 2,
-                         child: TextFormField(
-                           controller: controllers['full'],
-                           decoration: InputDecoration(labelText: 'Full', contentPadding: EdgeInsets.symmetric(horizontal: 8)),
-                           keyboardType: TextInputType.number,
-                           validator: (v) => v!.isEmpty ? 'Req' : null,
-                         ),
-                       ),
-                       IconButton(
-                         icon: Icon(Icons.delete, color: Colors.red),
-                         onPressed: () => _removeSubjectRow(index),
-                       )
-                     ],
-                   ),
-                 );
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12.0),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          flex: 3,
+                          child: TextFormField(
+                            controller: controllers['name'],
+                            enabled: false, // Read-only from routine
+                            decoration: InputDecoration(
+                              labelText: 'Subject', 
+                              contentPadding: EdgeInsets.symmetric(horizontal: 8),
+                              fillColor: Colors.grey[100],
+                              filled: true,
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        Expanded(
+                          flex: 2,
+                          child: TextFormField(
+                            controller: controllers['obtained'],
+                            decoration: InputDecoration(labelText: 'Obtained', contentPadding: EdgeInsets.symmetric(horizontal: 8)),
+                            keyboardType: TextInputType.number,
+                            validator: (v) => v!.isEmpty ? 'Req' : null,
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        Expanded(
+                          flex: 2,
+                          child: TextFormField(
+                            controller: controllers['full'],
+                            enabled: false, // Read-only from routine
+                            decoration: InputDecoration(
+                              labelText: 'Full', 
+                              contentPadding: EdgeInsets.symmetric(horizontal: 8),
+                              fillColor: Colors.grey[100],
+                              filled: true,
+                            ),
+                          ),
+                        ),
+                        // Removed delete button to prevent accidental removal of routine subjects
+                      ],
+                    ),
+                  );
                }).toList(),
 
-               TextButton.icon(
-                 icon: Icon(Icons.add),
-                 label: Text("Add Subject"),
-                 onPressed: _addSubjectRow,
-               ),
+                // No more manual subject adding as it's fetched from routine
 
                SizedBox(height: 32),
                SizedBox(
@@ -191,38 +185,90 @@ class _ResultEntryScreenState extends State<ResultEntryScreen> {
         if (snapshot.connectionState == ConnectionState.waiting) return CircularProgressIndicator();
         if (!snapshot.hasData || snapshot.data!.isEmpty) return Text("No students in this class");
         
+        final students = snapshot.data!;
+
         return DropdownButtonFormField<String>(
           value: _selectedStudentId,
           decoration: InputDecoration(labelText: 'Select Student', border: OutlineInputBorder()),
-          items: snapshot.data!.map((s) {
+          items: students.map((s) {
             return DropdownMenuItem(
               value: s['id'] as String,
-              child: Text("${s['name']} (${s['email']})"),
+              child: Text("${s['name']} (Adm: ${s['admNo'] ?? 'N/A'})"),
             );
           }).toList(),
-          onChanged: (val) => setState(() => _selectedStudentId = val),
+          onChanged: (val) {
+            setState(() {
+              _selectedStudentId = val;
+              // Auto-fill Roll Number from student's customData
+              final student = students.firstWhere((s) => s['id'] == val);
+              final dynamic rollNo = (student['customData'] as Map<String, dynamic>?)?['Roll.no'];
+              _rollNumberController.text = rollNo?.toString() ?? 'N/A';
+            });
+          },
           validator: (v) => v == null ? 'Please select a student' : null,
         );
       },
     );
   }
 
+  Widget _buildExamDropdown(ResultService resultService) {
+    return StreamBuilder<List<ScheduledExam>>(
+      stream: resultService.getScheduledExams(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) return const LinearProgressIndicator();
+        final exams = snapshot.data!;
+        if (exams.isEmpty) return const Text("No scheduled exams found. Please setup exams in Principal Dashboard.");
+        
+        return DropdownButtonFormField<ScheduledExam>(
+          value: _selectedExam,
+          decoration: const InputDecoration(labelText: 'Select Exam', border: OutlineInputBorder()),
+          items: exams.map((e) => DropdownMenuItem(value: e, child: Text(e.name))).toList(),
+          onChanged: (val) {
+            setState(() {
+              _selectedExam = val;
+              // Auto-populate subjects from routine
+              _subjectControllers.clear();
+              if (val?.routineConfig != null) {
+                final subjects = val!.routineConfig!['subjects'] as List? ?? [];
+                for (var s in subjects) {
+                  if (s is String) {
+                    _addSubjectRow(name: s, full: '100');
+                  } else if (s is Map) {
+                    _addSubjectRow(
+                      name: s['name'] ?? 'Unknown',
+                      full: (s['fullMarks'] ?? 100).toString(),
+                    );
+                  }
+                }
+              }
+            });
+          },
+          validator: (v) => v == null ? 'Please select an exam' : null,
+        );
+      },
+    );
+  }
+
   void _submitResult() async {
-    if (_formKey.currentState!.validate() && _selectedStudentId != null) {
+    if (_formKey.currentState!.validate() && _selectedStudentId != null && _selectedExam != null) {
       if (_subjectControllers.isEmpty) {
-         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Add at least one subject')));
+         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Please select an exam with a routine setup first.')));
          return;
       }
 
       setState(() => _isLoading = true);
+      final resultService = Provider.of<ResultService>(context, listen: false);
 
       // Collect Subjects
       List<Map<String, dynamic>> subjectsData = [];
+      Map<String, String> syncMarks = {};
       double totalObtained = 0;
+      double totalFull = 0;
       
       for (var controllers in _subjectControllers) {
         String name = controllers['name']!.text.trim();
-        double obtained = double.tryParse(controllers['obtained']!.text) ?? 0;
+        String obtainedStr = controllers['obtained']!.text.trim();
+        double obtained = double.tryParse(obtainedStr) ?? 0;
         double full = double.tryParse(controllers['full']!.text) ?? 100;
         
         subjectsData.add({
@@ -230,12 +276,12 @@ class _ResultEntryScreenState extends State<ResultEntryScreen> {
           'obtained': obtained,
           'full': full,
         });
+        syncMarks[name] = obtainedStr;
         totalObtained += obtained;
+        totalFull += full;
       }
 
-      double totalFull = double.tryParse(_grandTotalController.text) ?? 0;
-
-      // Grade Calculation Logic (Percentage based)
+      // Grade Calculation
       double percentage = (totalFull > 0) ? (totalObtained / totalFull) * 100 : 0;
       String grade = 'F';
       if (percentage >= 90) grade = 'A+';
@@ -247,7 +293,7 @@ class _ResultEntryScreenState extends State<ResultEntryScreen> {
       final result = ExamResult(
         id: '', 
         studentId: _selectedStudentId!, 
-        examName: _examNameController.text.trim(), 
+        examName: _selectedExam!.name, 
         subjects: subjectsData, 
         totalObtainedMarks: totalObtained, 
         totalFullMarks: totalFull, 
@@ -255,9 +301,22 @@ class _ResultEntryScreenState extends State<ResultEntryScreen> {
         grade: grade
       );
 
-      await Provider.of<ResultService>(context, listen: false).addResult(result);
-      setState(() => _isLoading = false);
-      Navigator.pop(context);
+      // 1. Add to individual results
+      await resultService.addResult(result);
+      
+      // 2. Sync to Principal's Result Sheet
+      await resultService.syncResultToSheet(
+        _selectedExam!.id, 
+        _selectedClassId!, 
+        _selectedStudentId!, 
+        syncMarks
+      );
+
+      if (mounted) {
+        setState(() => _isLoading = false);
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Result Published & Synced Successfully!')));
+      }
     }
   }
 }

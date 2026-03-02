@@ -4,7 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart'; // Add this import
 import '../../data/services/auth_service.dart';
 import '../../data/services/user_service.dart';
 
-class TeacherSalaryViewScreen extends StatelessWidget { // Standardize naming
+class StaffSalaryViewScreen extends StatelessWidget { // Standardize naming
   @override
   Widget build(BuildContext context) {
     final user = Provider.of<AuthService>(context).user;

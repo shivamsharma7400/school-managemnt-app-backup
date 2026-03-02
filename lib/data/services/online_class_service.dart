@@ -12,7 +12,8 @@ class OnlineClassService extends ChangeNotifier {
     required String description,
     required String classId,
     required String teacherName,
-    required String youtubeVideoId, // Initially we might manually enter this or simulate it
+    required String teacherId,
+    required String youtubeVideoId, 
   }) async {
     try {
       await _firestore.collection('online_classes').add({
@@ -20,6 +21,7 @@ class OnlineClassService extends ChangeNotifier {
         'description': description,
         'classId': classId,
         'teacherName': teacherName,
+        'teacherId': teacherId,
         'youtubeVideoId': youtubeVideoId,
         'startedAt': FieldValue.serverTimestamp(),
         'status': 'live',
@@ -42,6 +44,32 @@ class OnlineClassService extends ChangeNotifier {
         .map((snapshot) {
       final classes = snapshot.docs.map((doc) => OnlineClass.fromMap(doc.data(), doc.id)).toList();
       // Client-side sorting
+      classes.sort((a, b) => b.startedAt.compareTo(a.startedAt));
+      return classes;
+    });
+  }
+
+  // Get all classes for a student (both active and past)
+  Stream<List<OnlineClass>> getAllClassesForStudent(String classId) {
+    return _firestore
+        .collection('online_classes')
+        .where('classId', isEqualTo: classId)
+        .snapshots()
+        .map((snapshot) {
+      final classes = snapshot.docs.map((doc) => OnlineClass.fromMap(doc.data(), doc.id)).toList();
+      classes.sort((a, b) => b.startedAt.compareTo(a.startedAt));
+      return classes;
+    });
+  }
+
+  // Get history for a teacher
+  Stream<List<OnlineClass>> getHistoryForTeacher(String teacherId) {
+    return _firestore
+        .collection('online_classes')
+        .where('teacherId', isEqualTo: teacherId)
+        .snapshots()
+        .map((snapshot) {
+      final classes = snapshot.docs.map((doc) => OnlineClass.fromMap(doc.data(), doc.id)).toList();
       classes.sort((a, b) => b.startedAt.compareTo(a.startedAt));
       return classes;
     });

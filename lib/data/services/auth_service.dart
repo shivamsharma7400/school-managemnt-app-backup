@@ -11,15 +11,18 @@ class AuthService extends ChangeNotifier {
   String? _role;
   String? _classId;
   bool _isApproved = false;
+  Map<String, dynamic>? _userData;
 
   User? get user => _user;
   String? get role => _role;
   String? get classId => _classId;
   bool get isApproved => _isApproved;
+  Map<String, dynamic>? get currentUserData => _userData;
 
   // Helper to get name from Auth or potentially cached firestore data (if we added it).
   // For now, let's rely on Auth. If Auth name is null, we can return "User".
   String get userName => _user?.displayName ?? "User";
+  String get currentUserId => _user?.uid ?? "";
 
   bool get isLoading => _user == null && _auth.currentUser != null && _role == null;
 
@@ -32,6 +35,7 @@ class AuthService extends ChangeNotifier {
         _role = null;
         _classId = null;
         _isApproved = false; // Reset on sign out
+        _userData = null;
       }
       notifyListeners();
     });
@@ -41,6 +45,7 @@ class AuthService extends ChangeNotifier {
     try {
       DocumentSnapshot doc = await _firestore.collection('users').doc(uid).get();
       if (doc.exists) {
+        _userData = doc.data() as Map<String, dynamic>?;
         _role = doc['role'];
         _classId = doc['classId']; // Fetch classId
         _isApproved = doc['isApproved'] ?? false; // Fetch isApproved status
@@ -55,8 +60,9 @@ class AuthService extends ChangeNotifier {
            }
         }
 
-        // Save FCM Token
+        // Save FCM Token and Listen for Firestore changes
         NotificationService().saveTokenToUser(uid);
+        NotificationService().listenToNotifications(uid);
       } else {
         _role = 'pending'; // Default fallback
         _classId = null;
@@ -95,6 +101,10 @@ class AuthService extends ChangeNotifier {
       await cred.user!.updateDisplayName(name);
       await cred.user!.reload(); // Reload to reflect changes
       _user = _auth.currentUser; // Update local user object
+      
+      // Start listening
+      NotificationService().listenToNotifications(cred.user!.uid);
+
       notifyListeners();
       
       return null;
@@ -117,6 +127,7 @@ class AuthService extends ChangeNotifier {
   }
 
   Future<void> signOut() async {
+    NotificationService().stopListening();
     await _auth.signOut();
   }
 }

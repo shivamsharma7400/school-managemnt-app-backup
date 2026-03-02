@@ -7,6 +7,9 @@ import '../../data/models/class_model.dart';
 import '../../data/services/auth_service.dart';
 
 class MarkAttendanceScreen extends StatefulWidget {
+  final int initialIndex;
+  MarkAttendanceScreen({this.initialIndex = 0});
+
   @override
   _MarkAttendanceScreenState createState() => _MarkAttendanceScreenState();
 }
@@ -20,26 +23,36 @@ class _MarkAttendanceScreenState extends State<MarkAttendanceScreen> with Single
   // Toggle for Principal/Management
   late TabController _tabController;
   bool _isTeacherMode = false;
+  bool _isStaffMode = false;
   bool _canSwitchMode = false;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this, initialIndex: widget.initialIndex);
+    _checkModes(widget.initialIndex);
+    
     _tabController.addListener(() {
-      setState(() {
-        _isTeacherMode = _tabController.index == 1;
-        _selectedClassId = null; // Reset selection on switch
-        _attendanceStatus.clear();
-      });
+      if (!_tabController.indexIsChanging) {
+         setState(() {
+           _checkModes(_tabController.index);
+           _selectedClassId = null; // Reset selection on switch
+           _attendanceStatus.clear();
+         });
+      }
     });
+  }
+
+  void _checkModes(int index) {
+      _isTeacherMode = index == 1;
+      _isStaffMode = index == 2;
   }
 
   @override
   Widget build(BuildContext context) {
     final authService = Provider.of<AuthService>(context, listen: false);
     final userRole = authService.role;
-    _canSwitchMode = (userRole == 'principal' || userRole == 'management');
+    _canSwitchMode = (userRole == 'principal' || userRole == 'management' || userRole == 'admin');
 
     return Scaffold(
       appBar: AppBar(
@@ -50,6 +63,7 @@ class _MarkAttendanceScreenState extends State<MarkAttendanceScreen> with Single
                 tabs: [
                   Tab(text: "Students"),
                   Tab(text: "Teachers"),
+                  Tab(text: "Staff"),
                 ],
               ) 
             : null,
@@ -63,7 +77,7 @@ class _MarkAttendanceScreenState extends State<MarkAttendanceScreen> with Single
                padding: const EdgeInsets.all(16.0),
                child: Column(
                  children: [
-                    if (!_isTeacherMode) _buildClassDropdown(authService.user?.uid),
+                    if (!_isTeacherMode && !_isStaffMode) _buildClassDropdown(authService.user?.uid),
                     SizedBox(height: 16),
                     ListTile(
                       contentPadding: EdgeInsets.zero,
@@ -102,7 +116,7 @@ class _MarkAttendanceScreenState extends State<MarkAttendanceScreen> with Single
             child: SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: (_isLoading || (!_isTeacherMode && _selectedClassId == null)) ? null : _submitAttendance,
+                onPressed: (_isLoading || (!_isTeacherMode && !_isStaffMode && _selectedClassId == null)) ? null : _submitAttendance,
                 child: _isLoading ? CircularProgressIndicator(color: Colors.white) : Text('Submit Attendance'),
               ),
             ),
@@ -137,13 +151,15 @@ class _MarkAttendanceScreenState extends State<MarkAttendanceScreen> with Single
   }
 
   Widget _buildList() {
-    if (!_isTeacherMode && _selectedClassId == null) {
+    if (!_isTeacherMode && !_isStaffMode && _selectedClassId == null) {
       return Center(child: Text("Select a Class to view students"));
     }
 
     Stream<List<Map<String, dynamic>>> stream;
     if (_isTeacherMode) {
       stream = Provider.of<UserService>(context).getTeachers();
+    } else if (_isStaffMode) {
+      stream = Provider.of<UserService>(context).getDrivers();
     } else {
       stream = Provider.of<UserService>(context).getStudentsByClass(_selectedClassId!);
     }
@@ -207,7 +223,14 @@ class _MarkAttendanceScreenState extends State<MarkAttendanceScreen> with Single
 
   void _submitAttendance() async {
     setState(() => _isLoading = true);
-    final classId = _isTeacherMode ? 'TEACHERS' : _selectedClassId!;
+    final String classId;
+    if (_isTeacherMode) {
+       classId = 'TEACHERS';
+    } else if (_isStaffMode) {
+       classId = 'Drivers'; // Using 'Drivers' as ID for all non-teaching staff for now as per requirement
+    } else {
+       classId = _selectedClassId!;
+    }
     
     await Provider.of<AttendanceService>(context, listen: false).markAttendance(
       classId,

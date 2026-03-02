@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
-import 'package:google_generative_ai/google_generative_ai.dart';
 import '../../../data/services/ai_service.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/student_query_service.dart';
+import '../../../data/services/school_config_service.dart';
 import '../../../core/constants/app_constants.dart'; // Ensure logo path if available
 
 class ExploreSchoolScreen extends StatefulWidget {
@@ -27,11 +27,12 @@ class _ExploreSchoolScreenState extends State<ExploreSchoolScreen> {
 
   Future<void> _startChat() async {
     final aiService = Provider.of<AIService>(context, listen: false);
+    final config = Provider.of<SchoolConfigService>(context, listen: false);
     _chatSession = await aiService.startChatSession();
     setState(() {
       _messages.add({
         'role': 'ai',
-        'text': "Hello! I am **Veena AI Agent**. Ask me anything about the school!"
+        'text': "Hello! I am **${config.aiAgentName}**. Ask me anything about the school!"
       });
     });
   }
@@ -51,7 +52,7 @@ class _ExploreSchoolScreenState extends State<ExploreSchoolScreen> {
       String responseText = "I'm having trouble connecting.";
       
       if (_chatSession != null) {
-        final response = await _chatSession!.sendMessage(Content.text(query));
+        final response = await _chatSession!.sendMessage(Content.user(query));
         responseText = response.text ?? "I didn't understand that.";
       }
 
@@ -138,7 +139,7 @@ class _ExploreSchoolScreenState extends State<ExploreSchoolScreen> {
                      child: Icon(Icons.psychology, size: 16, color: Colors.white),
                   ),
                   SizedBox(width: 8),
-                  Text("Veena AI is typing...", style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic)),
+                  Text("${Provider.of<SchoolConfigService>(context, listen: false).aiAgentName} is typing...", style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic)),
                 ],
               ),
             ),
@@ -178,7 +179,7 @@ class _ExploreSchoolScreenState extends State<ExploreSchoolScreen> {
                    children: [
                       Icon(Icons.psychology, size: 14, color: Colors.blue[800]),
                       SizedBox(width: 4),
-                      Text("Veena AI", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blue[900])),
+                      Text(Provider.of<SchoolConfigService>(context, listen: false).aiAgentName, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blue[900])),
                    ],
                 ),
               ),

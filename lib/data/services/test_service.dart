@@ -53,4 +53,15 @@ class TestService extends ChangeNotifier {
          .get();
      return snapshot.docs.isNotEmpty;
   }
+
+  // Get completed test IDs for a student
+  Stream<List<String>> getCompletedTestIds(String studentId) {
+    return _firestore
+        .collection('test_results')
+        .where('studentId', isEqualTo: studentId)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => doc.data()['testId'] as String)
+            .toList());
+  }
 }

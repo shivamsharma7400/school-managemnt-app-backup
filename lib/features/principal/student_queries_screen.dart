@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -58,7 +59,23 @@ class StudentQueriesScreen extends StatelessWidget {
                       Divider(),
                       Text("Q: ${query['query']}", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                       SizedBox(height: 8),
-                      Text("AI Answer: ${query['aiResponse']}", style: TextStyle(fontStyle: FontStyle.italic, color: Colors.grey[800])),
+                      const Text("AI Answer:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.blue)),
+                      const SizedBox(height: 4),
+                      MarkdownBody(
+                        data: query['aiResponse'] ?? 'No response generated.',
+                        styleSheet: MarkdownStyleSheet(
+                          p: const TextStyle(fontSize: 14, color: Colors.black87, height: 1.4),
+                          strong: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue),
+                          horizontalRuleDecoration: BoxDecoration(
+                            border: Border(
+                              top: BorderSide(
+                                color: Colors.grey.shade300,
+                                width: 0.8,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
                       if (!isReviewed)
                         Align(
                           alignment: Alignment.centerRight,

@@ -23,7 +23,7 @@ class FeeRecord {
   double get dueAmount => _explicitDueAmount ?? (totalAmount - paidAmount);
   
   String get status {
-    if (paidAmount == totalAmount) return 'Paid';
+    if (dueAmount == 0) return 'Paid';
     if (paidAmount == 0) return 'Due';
     return 'Partial';
   }

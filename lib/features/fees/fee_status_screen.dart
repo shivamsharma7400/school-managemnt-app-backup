@@ -6,6 +6,9 @@ import '../../data/services/fee_service.dart';
 import '../../data/models/fee_record.dart';
 import '../../data/services/auth_service.dart';
 import '../../data/services/payment_service.dart';
+import '../../data/services/school_config_service.dart';
+import '../../core/constants/app_constants.dart';
+import '../../data/services/receipt_service.dart';
 
 class FeeStatusScreen extends StatefulWidget {
   @override
@@ -30,156 +33,159 @@ class _FeeStatusScreenState extends State<FeeStatusScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('My Fees')),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-              colors: [Colors.indigo.shade50, Colors.white],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter),
-        ),
-        child: FutureBuilder<List<FeeRecord>>(
-          future: _getFees(context),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return Center(child: CircularProgressIndicator());
-            }
-            if (!snapshot.hasData || snapshot.data!.isEmpty) {
-              return Center(child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.check_circle_outline, size: 80, color: Colors.green.shade300),
-                  SizedBox(height: 16),
-                  Text("No fee records found.", style: TextStyle(fontSize: 18, color: Colors.grey[700])),
-                ],
-              ));
-            }
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: const Text('Fee Summary', style: TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: true,
+      ),
+      body: FutureBuilder<List<FeeRecord>>(
+        future: _getFees(context),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          
+          if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return _buildEmptyState();
+          }
 
-            final fees = snapshot.data!;
-            return ListView.builder(
-              padding: EdgeInsets.all(20),
-              itemCount: fees.length,
-              itemBuilder: (context, index) {
-                final fee = fees[index];
-                final isPaid = fee.status == 'Paid';
-                
-                return Container(
-                  margin: EdgeInsets.only(bottom: 24),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 5))
-                    ],
-                    gradient: LinearGradient(
-                      colors: isPaid 
-                         ? [Colors.green.shade400, Colors.teal.shade600]
-                         : [Colors.white, Colors.white],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    )
-                  ),
-                  child: Theme(
-                    data: isPaid ? ThemeData.dark() : ThemeData.light(),
-                    child: Padding(
-                      padding: const EdgeInsets.all(24.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text("Fee Status", style: TextStyle(fontSize: 12, color: isPaid ? Colors.white70 : Colors.grey)),
-                                  SizedBox(height: 4),
-                                  Text(
-                                    fee.month.toUpperCase(), 
-                                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: isPaid ? Colors.white : Colors.indigo),
-                                  ),
-                                ],
-                              ),
-                              _buildStatusChip(fee.status, isPaid),
-                            ],
-                          ),
-                          SizedBox(height: 24),
-                          Divider(color: isPaid ? Colors.white24 : Colors.grey[200]),
-                          SizedBox(height: 16),
-                          _buildRow("Total Bill", "₹${fee.totalAmount}", isPaid: isPaid),
-                          _buildRow("Already Paid", "₹${fee.paidAmount}", isPaid: isPaid),
-                          SizedBox(height: 12),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                               Text("Amount Due", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: isPaid ? Colors.white : Colors.black87)),
-                               Text(
-                                 "₹${fee.dueAmount}", 
-                                 style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: isPaid ? Colors.white : Colors.redAccent)
-                               ),
-                            ],
-                          ),
-                          
-                          if (fee.status == 'Due' || fee.status == 'Partial') ...[
-                            SizedBox(height: 24),
-                            SizedBox(
-                              width: double.infinity,
-                              height: 54,
-                              child: ElevatedButton(
-                                onPressed: () async {
-                                    // Fetch user details first
-                                    final userDoc = await FirebaseFirestore.instance.collection('users').doc(fee.userId).get();
-                                    final userData = userDoc.data();
-                                    final String phone = userData?['phone'] ?? '';
-                                    final String email = userData?['email'] ?? '';
-                                    
-                                   _paymentService.openCheckout(
-                                     feeId: fee.id,
-                                     amount: fee.dueAmount, // Pay the due amount
-                                     name: fee.studentName, 
-                                     contact: phone, 
-                                     email: email, 
-                                     onResult: (success, msg) {
-                                       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-                                       if (success) setState(() {}); // Refresh UI
-                                     }
-                                   );
-                                },
-                                child: Text("PAY NOW", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.indigo,
-                                  foregroundColor: Colors.white,
-                                  elevation: 0,
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                ),
-                              ),
-                            )
-                          ]
-                        ],
-                      ),
+          final fees = snapshot.data!;
+          // For simplicity, we assume there's one primary fee record for the student (based on currentDue)
+          final primaryFee = fees.first;
+          final bool isSettled = primaryFee.dueAmount == 0;
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              children: [
+                if (isSettled) _buildSettledView(primaryFee) else _buildDueView(primaryFee),
+                const SizedBox(height: 40),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 4.0),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      "Payment History",
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                   ),
-                );
-              },
-            );
-          },
-        ),
+                ),
+                const SizedBox(height: 16),
+                _buildPaymentHistory(),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
 
-  Widget _buildRow(String label, String value, {bool isBold = false, Color? color, required bool isPaid}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  Widget _buildEmptyState() {
+     return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(label, style: TextStyle(color: isPaid ? Colors.white70 : Colors.black54)),
-          Text(
-            value,
-            style: TextStyle(
-              fontWeight: isBold ? FontWeight.bold : FontWeight.w600,
-              color: color ?? (isPaid ? Colors.white : Colors.black87),
-              fontSize: 16,
+          Icon(Icons.receipt_long_outlined, size: 80, color: Colors.grey[300]),
+          const SizedBox(height: 16),
+          Text("No fee records found.", style: TextStyle(fontSize: 18, color: Colors.grey[600])),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSettledView(FeeRecord fee) {
+    return Column(
+      children: [
+        const SizedBox(height: 40),
+        Container(
+          width: 100,
+          height: 100,
+          decoration: BoxDecoration(
+            color: Colors.green.shade50,
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.green.shade100, width: 4),
+          ),
+          child: const Icon(Icons.check_circle, size: 60, color: Colors.green),
+        ),
+        const SizedBox(height: 24),
+        const Text(
+          "Payment Fully Settled!",
+          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.green),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          "You have no outstanding balance for ${fee.month}",
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDueView(FeeRecord fee) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text("PENDING BALANCE", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 1.2)),
+                  const SizedBox(height: 4),
+                  Text(fee.month, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                ],
+              ),
+              _buildStatusChip('Due', false),
+            ],
+          ),
+          const SizedBox(height: 32),
+          Center(
+            child: Column(
+              children: [
+                const Text("Amount Due", style: TextStyle(color: Colors.grey, fontSize: 16)),
+                const SizedBox(height: 8),
+                Text(
+                  "₹${fee.dueAmount.toStringAsFixed(0)}",
+                  style: const TextStyle(fontSize: 48, fontWeight: FontWeight.bold, color: Colors.black),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 32),
+          const Divider(),
+          const SizedBox(height: 24),
+          _buildDetailRow("Monthly School Fee", "₹${fee.totalAmount.toStringAsFixed(0)}"),
+          _buildDetailRow("Previously Paid", "₹${fee.paidAmount.toStringAsFixed(0)}"),
+          const SizedBox(height: 40),
+          SizedBox(
+            width: double.infinity,
+            height: 60,
+            child: ElevatedButton(
+              onPressed: () => _handlePayment(fee),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                elevation: 0,
+              ),
+              child: const Text("PAY NOW", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             ),
           ),
         ],
@@ -187,43 +193,191 @@ class _FeeStatusScreenState extends State<FeeStatusScreen> {
     );
   }
 
-  Widget _buildStatusChip(String status, bool isPaid) {
-    Color bg;
-    Color fg;
-    
-    if (isPaid) {
-       bg = Colors.white;
-       fg = Colors.teal;
-    } else {
-      switch (status) {
-        case 'Due': bg = Colors.red.shade50; fg = Colors.red; break;
-        case 'Partial': bg = Colors.orange.shade50; fg = Colors.deepOrange; break;
-        default: bg = Colors.grey.shade100; fg = Colors.black;
-      }
-    }
+  Widget _buildDetailRow(String label, String value, {Color? valueColor}) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: TextStyle(color: Colors.grey[600], fontSize: 15)),
+        Text(value, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: valueColor ?? Colors.black87)),
+      ],
+    );
+  }
 
+  Widget _buildStatusChip(String status, bool isPaid) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(20)
+        color: isPaid ? Colors.green.shade50 : Colors.red.shade50,
+        borderRadius: BorderRadius.circular(30),
       ),
       child: Text(
-        status.toUpperCase(), 
-        style: TextStyle(color: fg, fontWeight: FontWeight.bold, fontSize: 12)
+        status.toUpperCase(),
+        style: TextStyle(
+          color: isPaid ? Colors.green : Colors.red,
+          fontWeight: FontWeight.bold,
+          fontSize: 12,
+        ),
       ),
     );
   }
+
+  Widget _buildPaymentHistory() {
+    final user = Provider.of<AuthService>(context, listen: false).user;
+    if (user == null) return const SizedBox();
+
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: Provider.of<FeeService>(context).getUserTransactions(user.uid),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: Padding(
+            padding: EdgeInsets.all(20.0),
+            child: CircularProgressIndicator(),
+          ));
+        }
+
+        if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(32.0),
+              child: Column(
+                children: [
+                  Icon(Icons.history_toggle_off, size: 60, color: Colors.grey[300]),
+                  const SizedBox(height: 16),
+                  Text("No payment history found", style: TextStyle(color: Colors.grey[500])),
+                ],
+              ),
+            ),
+          );
+        }
+
+        final transactions = snapshot.data!;
+        
+        return ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: transactions.length,
+          itemBuilder: (context, index) {
+            final txn = transactions[index];
+            final date = (txn['date'] as dynamic)?.toDate() ?? DateTime.now();
+            final amount = (txn['amount'] as num?)?.toDouble() ?? 0.0;
+            final type = txn['type'] ?? 'Payment';
+            final isPayment = type == 'Fee Payment' || type == 'Monthly Fee';
+
+            return Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(color: Colors.grey.shade200),
+              ),
+              margin: const EdgeInsets.only(bottom: 12),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isPayment ? Colors.green.withOpacity(0.1) : Colors.orange.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        isPayment ? Icons.arrow_downward : Icons.priority_high,
+                        color: isPayment ? Colors.green : Colors.orange,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            type,
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            DateFormat('MMM d, yyyy • h:mm a').format(date),
+                            style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                          ),
+                          if (txn['description'] != null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Text(
+                                txn['description'],
+                                style: TextStyle(color: Colors.grey[700], fontSize: 13),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Column(
+                      children: [
+                        Text(
+                          '₹${amount.toInt()}',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: isPayment ? Colors.green[700] : Colors.black87,
+                          ),
+                        ),
+                        if (isPayment)
+                          IconButton(
+                            icon: const Icon(Icons.receipt_long, color: AppColors.primary, size: 20),
+                            onPressed: () => ReceiptService().generateAndShowReceipt(context, txn),
+                            tooltip: 'View Receipt',
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _handlePayment(FeeRecord fee) async {
+    final userDoc = await FirebaseFirestore.instance.collection('users').doc(fee.userId).get();
+    final userData = userDoc.data();
+    final String phone = userData?['phone'] ?? '';
+    final String email = userData?['email'] ?? '';
+    
+    final schoolName = Provider.of<SchoolConfigService>(context, listen: false).schoolName;
+
+    _paymentService.openCheckout(
+      feeId: fee.id,
+      amount: fee.dueAmount,
+      name: fee.studentName, 
+      contact: phone, 
+      email: email,
+      classId: fee.classId,
+      userId: fee.userId,
+      schoolName: schoolName,
+      onResult: (success, msg) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+          if (success) setState(() {});
+        }
+      }
+    );
+  }
+
   Future<List<FeeRecord>> _getFees(BuildContext context) async {
     final user = Provider.of<AuthService>(context, listen: false).user;
     final authService = Provider.of<AuthService>(context, listen: false);
     
     if (user != null && authService.classId != null) {
-      // 1. Get Class Fee
       final classDoc = await FirebaseFirestore.instance.collection('classes').doc(authService.classId).get();
       final double monthlyFee = (classDoc.data()?['monthlyFee'] ?? 0).toDouble();
 
-      // 2. Get Extra Charges (Just for breakdown display if needed, but total due is authoritative from user doc)
       final extraChargesSnapshot = await FirebaseFirestore.instance
           .collection('extra_fees')
           .where('userId', isEqualTo: user.uid)
@@ -234,12 +388,10 @@ class _FeeStatusScreenState extends State<FeeStatusScreen> {
         extraTotal += (doc.data()['amount'] ?? 0).toDouble();
       }
 
-      // 3. Get Current Due from User Profile (Source of Truth)
       final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
       final double currentDue = (userDoc.data()?['currentDue'] ?? 0).toDouble();
 
-
-      final currentMonth = DateFormat('MMM yyyy').format(DateTime.now());
+      final currentMonth = DateFormat('MMMM yyyy').format(DateTime.now());
       
       return [
         FeeRecord(
@@ -248,11 +400,9 @@ class _FeeStatusScreenState extends State<FeeStatusScreen> {
           studentName: user.displayName ?? 'Student', 
           classId: authService.classId!, 
           month: currentMonth, 
-          // We show 'Total Amount' as the sum of monthly liabilities, 
-          // but 'Due Amount' is what management set.
           totalAmount: monthlyFee + extraTotal, 
           dueAmount: currentDue,
-          paidAmount: 0 
+          paidAmount: (monthlyFee + extraTotal) - currentDue
         )
       ];
     }

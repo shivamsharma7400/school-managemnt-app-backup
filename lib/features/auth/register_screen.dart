@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../data/services/auth_service.dart';
@@ -14,18 +13,45 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _phoneController = TextEditingController();
-  final _ageController = TextEditingController();
+  final _dobController = TextEditingController();
   final _addressController = TextEditingController();
   String _selectedGender = 'Male';
   bool _isLoading = false;
+  bool _obscurePassword = true;
+
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now().subtract(const Duration(days: 365 * 5)),
+      firstDate: DateTime(1900),
+      lastDate: DateTime.now(),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.light(
+              primary: Colors.indigo,
+              onPrimary: Colors.white,
+              onSurface: Colors.indigo,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null) {
+      setState(() {
+        _dobController.text = "${picked.day}/${picked.month}/${picked.year}";
+      });
+    }
+  }
 
   void _register() async {
     setState(() => _isLoading = true);
     final authService = Provider.of<AuthService>(context, listen: false);
-    
+
     Map<String, dynamic> additionalData = {
       'phone': _phoneController.text.trim(),
-      'age': _ageController.text.trim(),
+      'dob': _dobController.text.trim(),
       'gender': _selectedGender,
       'address': _addressController.text.trim(),
     };
@@ -34,15 +60,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _emailController.text.trim(),
       _passwordController.text.trim(),
       _nameController.text.trim(),
-      'pending', 
+      'pending',
       additionalData,
     );
     setState(() => _isLoading = false);
 
     if (error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error)));
     } else {
-       Navigator.pop(context); 
+      Navigator.pop(context);
     }
   }
 
@@ -54,7 +82,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         padding: EdgeInsets.all(24),
         child: Column(
           children: [
-             TextFormField(
+            TextFormField(
               controller: _nameController,
               decoration: InputDecoration(
                 labelText: 'Full Name',
@@ -62,7 +90,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
             ),
             SizedBox(height: 16),
-             TextFormField(
+            TextFormField(
               controller: _emailController,
               decoration: InputDecoration(
                 labelText: AppStrings.email,
@@ -84,12 +112,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
               children: [
                 Expanded(
                   child: TextFormField(
-                    controller: _ageController,
+                    controller: _dobController,
+                    readOnly: true,
+                    onTap: () => _selectDate(context),
                     decoration: InputDecoration(
-                      labelText: 'Age (Aadhar)',
+                      labelText: 'Date of Birth',
                       prefixIcon: Icon(Icons.calendar_today_outlined),
+                      hintText: 'DD/MM/YYYY',
                     ),
-                    keyboardType: TextInputType.number,
                   ),
                 ),
                 SizedBox(width: 16),
@@ -121,13 +151,25 @@ class _RegisterScreenState extends State<RegisterScreen> {
               maxLines: 2,
             ),
             SizedBox(height: 16),
-             TextFormField(
+            TextFormField(
               controller: _passwordController,
               decoration: InputDecoration(
                 labelText: AppStrings.password,
                 prefixIcon: Icon(Icons.lock_outlined),
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _obscurePassword
+                        ? Icons.visibility_outlined
+                        : Icons.visibility_off_outlined,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      _obscurePassword = !_obscurePassword;
+                    });
+                  },
+                ),
               ),
-              obscureText: true,
+              obscureText: _obscurePassword,
             ),
             SizedBox(height: 24),
             SizedBox(
@@ -136,7 +178,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
               child: ElevatedButton(
                 onPressed: _isLoading ? null : _register,
                 child: _isLoading
-                    ? CircularProgressIndicator(color: Theme.of(context).colorScheme.onPrimary)
+                    ? CircularProgressIndicator(
+                        color: Theme.of(context).colorScheme.onPrimary,
+                      )
                     : Text(AppStrings.register),
               ),
             ),

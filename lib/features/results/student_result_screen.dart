@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../data/services/result_service.dart';
 import '../../data/services/auth_service.dart';
+import '../../data/services/school_config_service.dart';
 import '../../data/models/result_model.dart';
 import '../../core/constants/app_constants.dart';
 
@@ -11,13 +13,15 @@ class StudentResultScreen extends StatelessWidget {
   final String? studentName;
   final String? studentClass;
   final String? studentRoll;
+  final String? studentAdmNo;
 
   const StudentResultScreen({
     Key? key, 
     this.studentId, 
     this.studentName, 
     this.studentClass, 
-    this.studentRoll
+    this.studentRoll,
+    this.studentAdmNo,
   }) : super(key: key);
 
   @override
@@ -73,14 +77,22 @@ class StudentResultScreen extends StatelessWidget {
             }
 
             final results = snapshot.data!;
-            return ListView.separated(
-              padding: EdgeInsets.all(16),
-              itemCount: results.length,
-              separatorBuilder: (ctx, i) => SizedBox(height: 20),
-              itemBuilder: (context, index) {
-                // We pass the display details we have.
-                // ExamResult object also has rollNumber, so that's handled in the card.
-                return _buildReportCard(context, results[index], displayName, displayClass);
+            return StreamBuilder<DocumentSnapshot>(
+              stream: FirebaseFirestore.instance.collection('users').doc(targetStudentId).snapshots(),
+              builder: (context, userSnapshot) {
+                String admNo = studentAdmNo ?? 'N/A';
+                if (userSnapshot.hasData && userSnapshot.data!.exists) {
+                   admNo = (userSnapshot.data!.data() as Map<String, dynamic>)['admNo'] ?? 'N/A';
+                }
+                
+                return ListView.separated(
+                  padding: EdgeInsets.all(16),
+                  itemCount: results.length,
+                  separatorBuilder: (ctx, i) => SizedBox(height: 20),
+                  itemBuilder: (context, index) {
+                    return _buildReportCard(context, results[index], displayName, displayClass, admNo);
+                  },
+                );
               },
             );
          },
@@ -88,7 +100,7 @@ class StudentResultScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildReportCard(BuildContext context, ExamResult result, String studentName, String className) {
+  Widget _buildReportCard(BuildContext context, ExamResult result, String studentName, String className, String admNo) {
     final double percentage = (result.totalFullMarks > 0) 
         ? (result.totalObtainedMarks / result.totalFullMarks * 100) 
         : 0;
@@ -114,22 +126,29 @@ class StudentResultScreen extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Container(
-                  padding: EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                    boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4)],
+                if (Provider.of<SchoolConfigService>(context).schoolLogoUrl.isNotEmpty)
+                  CircleAvatar(
+                    backgroundImage: NetworkImage(Provider.of<SchoolConfigService>(context).schoolLogoUrl),
+                    radius: 20,
+                    backgroundColor: Colors.transparent,
+                  )
+                else
+                  Container(
+                    padding: EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4)],
+                    ),
+                    child: Icon(Icons.school, color: AppColors.primary, size: 32),
                   ),
-                  child: Icon(Icons.school, color: AppColors.primary, size: 32),
-                ),
                 SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        AppStrings.appName.toUpperCase(),
+                        Provider.of<SchoolConfigService>(context).schoolName.toUpperCase(),
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
@@ -178,7 +197,15 @@ class StudentResultScreen extends StatelessWidget {
                   children: [
                     // Use roll number from the result object as it was frozen at exam time
                     _buildInfoItem("ROLL NO", result.rollNumber),
+                    _buildInfoItem("ADM NO", admNo),
+                  ],
+                ),
+                SizedBox(height: 16),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                     _buildInfoItem("DATE", DateFormat('dd MMM yyyy').format(DateTime.now())), 
+                    const Spacer(),
                   ],
                 ),
               ],

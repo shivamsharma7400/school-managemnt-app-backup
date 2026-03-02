@@ -14,7 +14,7 @@ class AnnouncementScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final authService = Provider.of<AuthService>(context);
     final userRole = authService.role ?? 'student'; // Default to student safely
-    final canPost = userRole == 'principal' || userRole == 'management';
+    final canPost = userRole == 'principal' || userRole == 'management' || userRole == 'admin';
 
     return Scaffold(
       appBar: AppBar(title: Text('Announcements')),

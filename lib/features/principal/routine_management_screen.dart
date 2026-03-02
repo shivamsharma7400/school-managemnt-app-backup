@@ -4,13 +4,14 @@ import 'package:provider/provider.dart';
 import '../../data/services/routine_service.dart';
 import '../../data/services/auth_service.dart';
 import '../common/widgets/class_dropdown.dart';
+import '../../core/utils/drive_helper.dart';
 
 class RoutineManagementScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final userRole = Provider.of<AuthService>(context).role;
 
-    if (!['management', 'principal'].contains(userRole)) {
+    if (!['management', 'principal', 'admin'].contains(userRole)) {
        return Scaffold(
         appBar: AppBar(title: Text("Access Denied")),
         body: Center(child: Text("Only Management and Principal can edit routines.")),
@@ -46,6 +47,7 @@ class RoutineManagementScreen extends StatelessWidget {
   void _showAddDialog(BuildContext context) {
     final _titleController = TextEditingController();
     final _descController = TextEditingController();
+    final _imageController = TextEditingController();
     String _selectedType = 'class';
     String? _selectedClass; // For dropdown
 
@@ -78,6 +80,8 @@ class RoutineManagementScreen extends StatelessWidget {
                 TextField(controller: _titleController, decoration: InputDecoration(labelText: 'Routine Title (e.g. Route 1)')),
               
               TextField(controller: _descController, decoration: InputDecoration(labelText: 'Routine Details'), maxLines: 3),
+              const SizedBox(height: 8),
+              TextField(controller: _imageController, decoration: InputDecoration(labelText: 'Image URL (Google Drive)', hintText: 'https://drive.google.com/...')),
             ],
           ),
           actions: [
@@ -93,8 +97,9 @@ class RoutineManagementScreen extends StatelessWidget {
                 }
 
                 if (title.isNotEmpty && _descController.text.isNotEmpty) {
+                  final String? directUrl = DriveHelper.getDirectDriveUrl(_imageController.text);
                   Provider.of<RoutineService>(context, listen: false)
-                      .addRoutine(title, _descController.text, _selectedType);
+                      .addRoutine(title, _descController.text, _selectedType, imageUrl: directUrl);
                   Navigator.pop(context);
                 }
               },
@@ -146,6 +151,7 @@ class _RoutineList extends StatelessWidget {
   void _showEditDialog(BuildContext context, Map<String, dynamic> routine) {
     final _titleController = TextEditingController(text: routine['title']);
     final _descController = TextEditingController(text: routine['description']);
+    final _imageController = TextEditingController(text: routine['imageUrl']);
 
     showDialog(
       context: context,
@@ -156,14 +162,17 @@ class _RoutineList extends StatelessWidget {
           children: [
             TextField(controller: _titleController, decoration: InputDecoration(labelText: 'Title')),
             TextField(controller: _descController, decoration: InputDecoration(labelText: 'Routine Details'), maxLines: 5),
+            const SizedBox(height: 8),
+            TextField(controller: _imageController, decoration: InputDecoration(labelText: 'Image URL (Google Drive)', hintText: 'https://drive.google.com/...')),
           ],
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancel')),
           ElevatedButton(
-            onPressed: () {
+           onPressed: () {
+               final String? directUrl = DriveHelper.getDirectDriveUrl(_imageController.text);
                Provider.of<RoutineService>(context, listen: false)
-                  .updateRoutine(routine['id'], _titleController.text, _descController.text);
+                  .updateRoutine(routine['id'], _titleController.text, _descController.text, imageUrl: directUrl);
                Navigator.pop(context);
             },
             child: Text('Save'),

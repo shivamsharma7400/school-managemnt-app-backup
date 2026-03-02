@@ -5,6 +5,7 @@ import '../../data/services/routine_service.dart';
 
 import 'package:flutter_linkify/flutter_linkify.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../core/utils/drive_helper.dart';
 
 class RoutineViewScreen extends StatelessWidget {
   @override
@@ -81,6 +82,22 @@ class _RoutineList extends StatelessWidget {
                     linkStyle: TextStyle(color: Colors.blue, decoration: TextDecoration.underline),
                   ),
                 ),
+                trailing: routine['imageUrl'] != null && (routine['imageUrl'] as String).isNotEmpty
+                    ? InkWell(
+                        onTap: () => _showFullScreenImage(context, routine['imageUrl']),
+                        child: Container(
+                          width: 60,
+                          height: 60,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8),
+                            image: DecorationImage(
+                              image: NetworkImage(routine['imageUrl']),
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                        ),
+                      )
+                    : null,
                 leading: CircleAvatar(
                   backgroundColor: Colors.blue.shade50,
                   child: Icon(type == 'class' ? Icons.book : Icons.airport_shuttle, color: Colors.blue),
@@ -90,6 +107,41 @@ class _RoutineList extends StatelessWidget {
           },
         );
       },
+    );
+  }
+
+  void _showFullScreenImage(BuildContext context, String imageUrl) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: EdgeInsets.all(10),
+        child: Stack(
+          alignment: Alignment.topRight,
+          children: [
+            InteractiveViewer(
+              panEnabled: true,
+              minScale: 0.5,
+              maxScale: 4.0,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.network(
+                  imageUrl,
+                  fit: BoxFit.contain,
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return Center(child: CircularProgressIndicator());
+                  },
+                ),
+              ),
+            ),
+            IconButton(
+              icon: Icon(Icons.close, color: Colors.white, size: 30),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

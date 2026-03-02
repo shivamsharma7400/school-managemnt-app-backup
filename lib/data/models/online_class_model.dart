@@ -7,6 +7,7 @@ class OnlineClass {
   final String youtubeVideoId;
   final String classId;
   final String teacherName;
+  final String teacherId;
   final DateTime startedAt;
   final String status; // 'live', 'ended'
 
@@ -17,6 +18,7 @@ class OnlineClass {
     required this.youtubeVideoId,
     required this.classId,
     required this.teacherName,
+    required this.teacherId,
     required this.startedAt,
     required this.status,
   });
@@ -29,6 +31,7 @@ class OnlineClass {
       youtubeVideoId: data['youtubeVideoId'] ?? '',
       classId: data['classId'] ?? '',
       teacherName: data['teacherName'] ?? '',
+      teacherId: data['teacherId'] ?? '',
       startedAt: (data['startedAt'] as Timestamp).toDate(),
       status: data['status'] ?? 'ended',
     );
@@ -41,6 +44,7 @@ class OnlineClass {
       'youtubeVideoId': youtubeVideoId,
       'classId': classId,
       'teacherName': teacherName,
+      'teacherId': teacherId,
       'startedAt': Timestamp.fromDate(startedAt),
       'status': status,
     };

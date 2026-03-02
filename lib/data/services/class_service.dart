@@ -46,4 +46,62 @@ class ClassService extends ChangeNotifier {
       'monthlyFee': fee,
     });
   }
+
+  Future<void> updateClassFees({
+    required String classId,
+    double? coachingFee,
+    double? busFee,
+    double? hostelFee,
+    double? milkFee,
+    double? monthlyFee,
+    Map<String, double>? otherFees,
+  }) async {
+    final Map<String, dynamic> data = {};
+    if (coachingFee != null) data['coachingFee'] = coachingFee;
+    if (busFee != null) data['busFee'] = busFee;
+    if (hostelFee != null) data['hostelFee'] = hostelFee;
+    if (milkFee != null) data['milkFee'] = milkFee;
+    if (monthlyFee != null) data['monthlyFee'] = monthlyFee;
+    if (otherFees != null) data['otherFees'] = otherFees;
+    if (data.isNotEmpty) {
+      await _firestore.collection('classes').doc(classId).update(data);
+    }
+  }
+
+  Future<void> assignClassTeacher(String classId, String teacherId) async {
+    // 1. Clear this teacher from any other class they might be assigned to (ensure 1:1)
+    final existingClasses = await _firestore
+        .collection('classes')
+        .where('teacherId', isEqualTo: teacherId)
+        .get();
+    
+    final batch = _firestore.batch();
+    for (var doc in existingClasses.docs) {
+      if (doc.id != classId) {
+        batch.update(doc.reference, {'teacherId': ''});
+      }
+    }
+
+    // 2. Assign to new class (or clear if classId is empty)
+    if (classId.isNotEmpty) {
+      batch.update(_firestore.collection('classes').doc(classId), {'teacherId': teacherId});
+    }
+    
+    await batch.commit();
+    notifyListeners();
+  }
+
+  Future<void> addCustomColumn(String classId, String columnName) async {
+    await _firestore.collection('classes').doc(classId).update({
+      'customColumns': FieldValue.arrayUnion([columnName])
+    });
+    notifyListeners();
+  }
+
+  Future<void> removeCustomColumn(String classId, String columnName) async {
+    await _firestore.collection('classes').doc(classId).update({
+      'customColumns': FieldValue.arrayRemove([columnName])
+    });
+    notifyListeners();
+  }
 }

@@ -84,4 +84,114 @@ class AttendanceService extends ChangeNotifier {
       return {};
     }
   }
+
+  /// Get summary of today's attendance across all classes (Stream version)
+  Stream<Map<String, int>> getDailyAttendanceSummaryStream(DateTime date) {
+    final dateStart = DateTime(date.year, date.month, date.day);
+    final dateEnd = dateStart.add(Duration(days: 1));
+
+    return _firestore.collection('attendance')
+        .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(dateStart))
+        .where('date', isLessThan: Timestamp.fromDate(dateEnd))
+        .snapshots()
+        .map((snapshot) {
+          int present = 0;
+          int absent = 0;
+          int totalMarked = 0;
+
+          for (var doc in snapshot.docs) {
+            final data = doc.data();
+            final classId = data['classId']?.toString() ?? '';
+
+            if (classId.toUpperCase() == 'TEACHERS' || classId.toUpperCase() == 'DRIVERS') {
+              continue;
+            }
+
+            final records = Map<String, dynamic>.from(data['records'] ?? {});
+            totalMarked += records.length;
+            records.forEach((_, status) {
+              final s = status.toString().toLowerCase();
+              if (s == 'p' || s == 'present') present++;
+              else if (s == 'a' || s == 'absent') absent++;
+            });
+          }
+
+          return {
+            'present': present,
+            'absent': absent,
+            'totalMarked': totalMarked,
+          };
+        });
+  }
+
+  /// Get summary of today's attendance across all classes (Future version for AI)
+  Future<Map<String, int>> getDailyAttendanceSummaryFuture(DateTime date) async {
+    try {
+      final dateStart = DateTime(date.year, date.month, date.day);
+      final dateEnd = dateStart.add(Duration(days: 1));
+
+      final snapshot = await _firestore.collection('attendance')
+          .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(dateStart))
+          .where('date', isLessThan: Timestamp.fromDate(dateEnd))
+          .get();
+
+      int present = 0;
+      int absent = 0;
+      int totalMarked = 0;
+
+      for (var doc in snapshot.docs) {
+        final data = doc.data();
+        final classId = data['classId']?.toString() ?? '';
+
+        if (classId.toUpperCase() == 'TEACHERS' || classId.toUpperCase() == 'DRIVERS') {
+          continue;
+        }
+
+        final records = Map<String, dynamic>.from(data['records'] ?? {});
+        totalMarked += records.length;
+        records.forEach((_, status) {
+          final s = status.toString().toLowerCase();
+          if (s == 'p' || s == 'present') present++;
+          else if (s == 'a' || s == 'absent') absent++;
+        });
+      }
+
+      return {
+        'present': present,
+        'absent': absent,
+        'totalMarked': totalMarked,
+      };
+    } catch (e) {
+      print('Error getting attendance summary: $e');
+      return {'present': 0, 'absent': 0, 'totalMarked': 0};
+    }
+  }
+
+  /// Get list of all present IDs for a date (Students and Staff)
+  Future<List<String>> getPresentIds(DateTime date) async {
+    try {
+      final dateStart = DateTime(date.year, date.month, date.day);
+      final dateEnd = dateStart.add(const Duration(days: 1));
+
+      final snapshot = await _firestore.collection('attendance')
+          .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(dateStart))
+          .where('date', isLessThan: Timestamp.fromDate(dateEnd))
+          .get();
+
+      List<String> presentIds = [];
+      for (var doc in snapshot.docs) {
+        final records = Map<String, dynamic>.from(doc.data()['records'] ?? {});
+        records.forEach((id, status) {
+          final s = status.toString().toLowerCase();
+          if (s == 'p' || s == 'present') {
+            presentIds.add(id);
+          }
+        });
+      }
+      return presentIds;
+    } catch (e) {
+      print('Error getting present IDs: $e');
+      return [];
+    }
+  }
 }

@@ -28,6 +28,17 @@ class AppColors {
   static const Color darkOnBackground = Color(0xFFF1F5F9); // Slate 100
   static const Color darkOnSurface = Color(0xFFF8FAFC); // Slate 50
   static const Color darkOnError = Color(0xFF0F172A);
+  
+  // Modern Theme Colors (Dashboard Revamp)
+  static const Color modernPrimary = Color(0xFF3B82F6); // Bright Blue
+  static const Color modernSecondary = Color(0xFF60A5FA); // Lighter Blue
+  static const Color sidebarBackground = Color(0xFF2563EB); // Deep Blue Sidebar
+  static const Color dashboardBackground = Color(0xFFF1F5F9); // Light Grayish Blue
+  static const Color cardBackground = Colors.white;
+  static const Color headerBackground = Colors.white;
+  static const Color sidebarItemActive = Colors.white24;
+  static const Color sidebarTextActive = Colors.white;
+  static const Color sidebarTextInactive = Colors.white70;
 
 }
 
@@ -36,6 +47,7 @@ class AppConstants {
     '1', '2', '3', '4', '5', '6', '7', '8'
   ];
   static const String youtubeApiKey = 'AIzaSyDrEPFqGTCHyzaSL6E5VfPrKZCQaaTj6DE'; // Provided by user
+  static const String googleMapsApiKey = 'AIzaSyA1_wa2YHD_NA3ImtlBmhwLiAQmnRoygV8'; // From AndroidManifest
 }
 
 class AppStrings {
@@ -47,5 +59,6 @@ class AppStrings {
   static const String student = 'Student';
   static const String teacher = 'Teacher';
   static const String principal = 'Principal';
+  static const String admin = 'Admin';
   static const String pending = 'Pending';
 }

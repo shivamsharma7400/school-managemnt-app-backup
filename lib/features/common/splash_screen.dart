@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'onboarding_screen.dart';
 import '../../main.dart'; // For AuthWrapper
-import '../../core/constants/app_constants.dart';
+import 'package:provider/provider.dart';
+import 'package:vps/core/constants/app_constants.dart'; // Import AppStrings
+import 'package:vps/data/services/school_config_service.dart';
 
 class SplashScreen extends StatefulWidget {
   @override
@@ -16,19 +18,18 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   void initState() {
     super.initState();
     _controller = AnimationController(
-       duration: const Duration(seconds: 2),
-       vsync: this,
-    )..forward();
-    
-    _animation = CurvedAnimation(parent: _controller, curve: Curves.easeIn);
+      vsync: this,
+      duration: Duration(seconds: 2),
+    );
+    _animation = CurvedAnimation(parent: _controller, curve: Curves.easeInOut);
 
-    _navigateToNext();
-  }
+    _controller.forward();
 
-  _navigateToNext() async {
-    await Future.delayed(Duration(seconds: 3));
-    // Navigate directly to AuthWrapper (Login/Dashboard check)
-    Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => AuthWrapper()));
+    // Navigate to Login Screen after 3 seconds
+    Future.delayed(Duration(seconds: 3), () {
+      // Navigator.pushReplacementNamed(context, '/login'); // Use named route if defined
+       Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => AuthWrapper()));
+    });
   }
 
   @override
@@ -39,27 +40,44 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
   @override
   Widget build(BuildContext context) {
+    // We can listen here, or just fetch once since splash is short lived.
+    // However, listening ensures we get the latest if cached.
+    final config = Provider.of<SchoolConfigService>(context);
+
     return Scaffold(
-      backgroundColor: AppColors.primary,
+      backgroundColor: Colors.blueAccent, // Use your primary color
       body: Center(
         child: FadeTransition(
           opacity: _animation,
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.school, size: 100, color: Colors.white),
-              SizedBox(height: 24),
+              // Logo
+              // Logo
+               Container(
+                 width: 120,
+                 height: 120,
+                 decoration: BoxDecoration(
+                   color: Colors.white,
+                   shape: BoxShape.circle,
+                 ),
+                 child: Image.asset('assets/logos/logo.png', height: 80),
+               ),
+              SizedBox(height: 20),
+              // App Name
               Text(
-                AppStrings.appName,
+                config.schoolName,
                 style: TextStyle(
-                  color: Colors.white,
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
+                  color: Colors.white,
                   letterSpacing: 1.5,
                 ),
               ),
-              SizedBox(height: 16),
-              CircularProgressIndicator(color: Colors.white),
+              SizedBox(height: 10),
+              CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              ),
             ],
           ),
         ),

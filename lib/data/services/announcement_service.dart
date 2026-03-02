@@ -13,6 +13,9 @@ class AnnouncementService extends ChangeNotifier {
       query = query.where('targetAudience', whereIn: ['student', 'all']);
     } else if (userRole == 'teacher') {
       query = query.where('targetAudience', whereIn: ['teacher', 'all']);
+    } else if (userRole == 'driver') {
+      // Driver sees student and teacher announcements + all
+      query = query.where('targetAudience', whereIn: ['student', 'teacher', 'all']);
     }
     // Principal and Management see all
 

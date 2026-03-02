@@ -1,6 +1,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'firebase_options.dart';
 import 'core/theme/app_theme.dart';
@@ -15,24 +16,29 @@ import 'data/services/routine_service.dart';
 import 'data/services/announcement_service.dart';
 import 'data/services/result_service.dart';
 import 'data/services/class_service.dart';
-import 'data/services/class_service.dart';
 import 'data/services/assignment_service.dart';
 import 'data/services/leave_service.dart';
 import 'data/services/notification_service.dart';
 import 'data/services/test_service.dart';
-import 'data/services/online_class_service.dart'; // Add this import
-import 'data/services/online_class_service.dart'; // Add this import
+import 'data/services/online_class_service.dart';
 import 'data/services/ai_service.dart';
 import 'data/services/school_info_service.dart';
 import 'data/services/student_query_service.dart';
+import 'data/services/strategic_planning_service.dart';
+
+import 'data/services/bus_service.dart';
+import 'data/services/school_config_service.dart';
+import 'data/services/complaint_service.dart';
 import 'features/auth/login_screen.dart';
 import 'features/auth/register_screen.dart';
 import 'features/student/student_dashboard.dart'; // Placeholder
 import 'features/teacher/teacher_dashboard.dart'; // Placeholder
 import 'features/principal/principal_dashboard.dart'; // Placeholder
+import 'features/admin/admin_dashboard.dart';
 import 'features/management/management_dashboard.dart';
 import 'features/driver/driver_dashboard.dart';
 import 'features/auth/pending_approval_screen.dart';
+import 'features/student/passed_out_dashboard.dart';
 import 'features/common/splash_screen.dart';
 
 void main() async {
@@ -69,17 +75,23 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AIService()),
         ChangeNotifierProvider(create: (_) => SchoolInfoService()),
         ChangeNotifierProvider(create: (_) => StudentQueryService()),
+        ChangeNotifierProvider(create: (_) => BusService()),
         ChangeNotifierProvider(create: (_) => NotificationService()..initialize()), // Init here
+
+        ChangeNotifierProvider(create: (_) => SchoolConfigService()),
         ChangeNotifierProvider(create: (_) => ThemeService()), // Add ThemeService
+        Provider(create: (_) => ComplaintService()),
+        ChangeNotifierProvider(create: (_) => StrategicPlanningService()),
       ],
-      child: Consumer<ThemeService>(
-        builder: (context, themeService, child) {
-          return MaterialApp(
+      child: Consumer2<ThemeService, AuthService>(
+        builder: (context, themeService, authService, child) {
+          final isModern = authService.role == 'principal' || authService.role == 'management' || authService.role == 'admin';
+          
+          return GetMaterialApp(
             title: AppStrings.appName,
-            theme: AppTheme.lightTheme,
-            darkTheme: AppTheme.darkTheme,
-            themeMode: themeService.themeMode,
-            home: SplashScreen(), // Starts with Splash
+            theme: isModern ? AppTheme.modernTheme : AppTheme.lightTheme,
+            themeMode: ThemeMode.light,
+            home: AuthWrapper(), // Changed from SplashScreen to AuthWrapper for better flow control
             routes: {
               '/register': (context) => RegisterScreen(),
             },
@@ -114,8 +126,12 @@ class AuthWrapper extends StatelessWidget {
         return PrincipalDashboard();
       case 'management':
         return ManagementDashboard();
+      case 'admin':
+        return AdminDashboard();
       case 'driver':
         return DriverDashboard();
+      case 'passed_out':
+        return PassedOutDashboard();
       case 'pending':
         return PendingApprovalScreen();
       default:

@@ -180,4 +180,40 @@ class AppTheme {
       ),
     );
   }
+
+  static ThemeData get modernTheme {
+    return ThemeData(
+      brightness: Brightness.light,
+      primaryColor: AppColors.modernPrimary,
+      scaffoldBackgroundColor: AppColors.dashboardBackground,
+      colorScheme: ColorScheme.light(
+        primary: AppColors.modernPrimary,
+        secondary: AppColors.modernSecondary,
+        surface: AppColors.cardBackground,
+        background: AppColors.dashboardBackground,
+        onPrimary: Colors.white,
+        onSurface: AppColors.onBackground,
+      ),
+      textTheme: GoogleFonts.outfitTextTheme(ThemeData.light().textTheme),
+      useMaterial3: true,
+      cardTheme: CardThemeData(
+        color: AppColors.cardBackground,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+      appBarTheme: AppBarTheme(
+        backgroundColor: AppColors.headerBackground,
+        elevation: 0,
+        centerTitle: false,
+        iconTheme: IconThemeData(color: AppColors.onBackground),
+        titleTextStyle: GoogleFonts.outfit(
+          color: AppColors.onBackground,
+          fontSize: 20,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
 }

@@ -12,8 +12,10 @@ class PaymentService {
 
   Function(bool success, String message)? _onResult;
   String? _currentFeeId;
-  double? _currentAmount; // Added to store amount
+  double? _currentAmount;
   String? _currentStudentId;
+  String? _currentClassId; 
+  String? _currentStudentName; 
 
   void initialize() {
     _razorpay = Razorpay();
@@ -24,7 +26,7 @@ class PaymentService {
 
   void dispose() {
     _razorpay.clear();
-  }
+  } 
 
   void openCheckout({
     required String feeId,
@@ -33,15 +35,21 @@ class PaymentService {
     required String contact, // e.g. '9876543210'
     required String email,
     required Function(bool, String) onResult,
+    required String schoolName,
+    String? classId,
+    String? userId,
   }) {
     _currentFeeId = feeId;
-    _currentAmount = amount; // Store amount
+    _currentAmount = amount; 
     _onResult = onResult;
+    _currentClassId = classId;
+    _currentStudentId = userId;
+    _currentStudentName = name;
 
     var options = {
       'key': _keyId, // Using the key defined above
       'amount': (amount * 100).toInt(), // Amount in paise
-      'name': 'Veena Public School',
+      'name': schoolName,
       'description': 'Fee Payment',
       'retry': {'enabled': true, 'max_count': 1},
       'send_sms_hash': true,
@@ -61,6 +69,23 @@ class PaymentService {
 
   void _handlePaymentSuccess(PaymentSuccessResponse response) async {
     print("Payment Success: ${response.paymentId}");
+    
+    if (_currentFeeId == 'dynamic_current' && _currentStudentId != null) {
+       // Logic for paying 'current due' without a monthly fee record
+        try {
+          await _feeService.processGeneralPayment(
+              userId: _currentStudentId!,
+              studentName: _currentStudentName ?? 'Unknown',
+              classId: _currentClassId ?? '', // Handle if missing
+              amount: _currentAmount ?? 0.0
+          );
+          _onResult?.call(true, "Payment Successful: ${response.paymentId}");
+        } catch (e) {
+          _onResult?.call(false, "Payment succeeded but update failed: $e");
+        }
+        return;
+    }
+
     if (_currentFeeId != null) {
       // Update Fee Status in Firestore
       try {
