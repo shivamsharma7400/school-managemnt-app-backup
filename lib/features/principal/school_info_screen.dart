@@ -75,7 +75,10 @@ class _SchoolInfoScreenState extends State<SchoolInfoScreen> {
           'rules': _rulesController.text.trim(),
           'custom_fields': customData,
         });
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('School Info Updated')));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('School Info Updated & AI Assistant Trained Successfully!'),
+          backgroundColor: Colors.green,
+        ));
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
       }

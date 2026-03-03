@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
+import '../models/strategic_task.dart';
 
 // Compatibility Layer for UI
 class Content {
@@ -50,8 +51,8 @@ class ChatSession {
 }
 
 class AIService extends ChangeNotifier {
-  static const String _apiKey = 'AIzaSyBIq_qSKGogWvH44OqybnmUH3gljqk4gtQ';
-  static const String _modelName = 'gemini-2.5-flash'; 
+  static const String _apiKey = 'AIzaSyDAzTkHsKrJE6rNd1K71SyMSDzmRUUJQpw';
+  static const String _modelName = 'gemini-3-flash-preview'; 
   static const String _baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/$_modelName:generateContent?key=$_apiKey';
 
   AIService();
@@ -218,6 +219,14 @@ class AIService extends ChangeNotifier {
     final String rules = schoolInfo['rules'] ?? 'No specific rules provided.';
     final String about = schoolInfo['about'] ?? '';
 
+    // Custom fields from info
+    String customInfo = "";
+    if (schoolInfo['custom_fields'] != null) {
+       (schoolInfo['custom_fields'] as Map).forEach((k, v) {
+         customInfo += "- $k: $v\n";
+       });
+    }
+
     final systemPrompt = """
     You are "$aiName", a helpful and polite assistant for $name.
     
@@ -227,6 +236,7 @@ class AIService extends ChangeNotifier {
     - Contact: $contact
     - Admission/Rules: $rules
     - About School: $about
+    $customInfo
 
     Task:
     - Answer based strictly on the above information if available.
@@ -261,11 +271,37 @@ class AIService extends ChangeNotifier {
       final schoolName = schoolDocs.data()?['name'] ?? 'Veena Public School';
       final session = schoolDocs.data()?['currentSession'] ?? '${now.year}-${(now.year + 1).toString().substring(2)}';
 
-      // 2. Fetch ALL School Members (Comprehensive Fetch)
+      // 2. Fetch Strategic Tasks
+      final tasksSnapshot = await FirebaseFirestore.instance.collection('strategic_tasks')
+          .where('isCompleted', isEqualTo: false)
+          .get();
+      String strategicContext = tasksSnapshot.docs.isEmpty ? "No active strategic tasks." : tasksSnapshot.docs.map((d) {
+        final data = d.data();
+        data['id'] = d.id;
+        final task = StrategicTask.fromJson(data);
+        return "- ${task.title} (Priority: ${task.priority}, Due: ${DateFormat('dd-MMM').format(task.date)})";
+      }).join("\n");
+
+      // 3. Fetch Syllabus Progress
+      final syllabusSnapshot = await FirebaseFirestore.instance.collection('syllabuses').get();
+      final syllabusBuffer = StringBuffer();
+      for (var doc in syllabusSnapshot.docs) {
+         final data = doc.data();
+         final String subject = data['subjectName'] ?? 'Unknown';
+         final String className = data['className'] ?? 'Unknown';
+         final chapters = (data['chapters'] as List? ?? []);
+         final completed = chapters.where((c) => c['status'] == 'Completed').length;
+         final total = chapters.length;
+         if (total > 0) {
+           syllabusBuffer.writeln("- $subject (Class $className): $completed/$total chapters completed.");
+         }
+      }
+
+      // 4. Fetch ALL School Members
       final allUsersSnapshot = await FirebaseFirestore.instance.collection('users').get();
       final allUsers = allUsersSnapshot.docs;
       
-      // 3. Today's Attendance Snapshot
+      // 5. Today's Attendance Snapshot
       final dateStart = DateTime(now.year, now.month, now.day);
       final dateEnd = dateStart.add(const Duration(days: 1));
       final attendanceSnapshot = await FirebaseFirestore.instance.collection('attendance')
@@ -283,7 +319,7 @@ class AIService extends ChangeNotifier {
         });
       }
 
-      // 4. Format Master Directory as a Markdown Table (Highly readable for Gemini)
+      // Master Directory Table
       final buffer = StringBuffer();
       buffer.writeln("| ROLE | ID/ADM | NAME | CLASS/TYPE | STATUS |");
       buffer.writeln("|------|--------|------|------------|--------|");
@@ -300,7 +336,7 @@ class AIService extends ChangeNotifier {
         buffer.writeln("| $uRole | $idInfo | $name | $subInfo | $isP |");
       }
 
-      // 5. Financial Snapshot (Today)
+      // Financial Snapshot (Today)
       final transTodaySnapshot = await FirebaseFirestore.instance.collection('transactions')
           .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(dateStart))
           .where('date', isLessThan: Timestamp.fromDate(dateEnd))
@@ -322,22 +358,27 @@ class AIService extends ChangeNotifier {
       
       CRITICAL ROLE:
       - You have FULL and UNRESTRICTED access to the School Database provided below.
-      - If a user asks for Admission Number 740, you MUST search the table below for "740" in the "ID/ADM" column.
-      - NEVER say "I don't have this record" or "Check manual register". The table is the source of truth.
+      - NEVER say "I don't have this record". The data provided is the source of truth.
+      
+      STRATEGIC TASKS:
+      $strategicContext
+      
+      ACADEMIC PROGRESS (SYLLABUS):
+      ${syllabusBuffer.isEmpty ? "No syllabus data available." : syllabusBuffer.toString()}
+      
+      METRICS:
+      - Today's Fee Collection: ₹${todayCollected.toStringAsFixed(2)}
+      - Pending Leave Requests: ${pendingLeaves.docs.length}
       
       SCHOOL MASTER DIRECTORY:
       ${buffer.toString()}
       
-      METRICS:
-      - Today's Collection: ₹${todayCollected.toStringAsFixed(2)}
-      - Pending Leaves: ${pendingLeaves.docs.length}
-      
       MISSION:
       1. Provide instant details on any student/staff by name or ID.
-      2. Analyze attendance (P=Present, A=Absent).
-      3. Handle management strategy and document generation.
+      2. Analyze attendance patterns and academic progress.
+      3. Handle management strategy, planning, and document generation.
       
-      Tone: Extreme focus on data accuracy. Efficient and Professional.
+      Tone: Absolute data focus. Efficient, Professional, and Strategic.
       Language: Match user's language (Hindi/English).
       """;
 

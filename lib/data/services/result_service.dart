@@ -57,7 +57,7 @@ class ResultService extends ChangeNotifier {
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) => snapshot.docs.map((doc) => 
-            ScheduledExam.fromFirestore(doc.data() as Map<String, dynamic>, doc.id)
+            ScheduledExam.fromFirestore(doc.data() as Map, doc.id)
         ).toList());
   }
 

@@ -25,15 +25,15 @@ class ScheduledExam {
     'result': false,
   };
 
-  factory ScheduledExam.fromFirestore(Map<String, dynamic> data, String id) {
+  factory ScheduledExam.fromFirestore(Map data, String id) {
     return ScheduledExam(
       id: id,
       name: data['name'] ?? '',
       startDate: (data['startDate'] as Timestamp).toDate(),
       endDate: (data['endDate'] as Timestamp).toDate(),
       status: data['status'] ?? 'Upcoming',
-      routineConfig: data['routine_config'] as Map<String, dynamic>?,
-      accessPermissions: data['accessPermissions'] as Map<String, dynamic>?,
+      routineConfig: (data['routine_config'] as Map?)?.cast<String, dynamic>(),
+      accessPermissions: (data['accessPermissions'] as Map?)?.cast<String, dynamic>(),
     );
   }
 

@@ -8,6 +8,8 @@ import 'package:vps/data/services/user_service.dart';
 import 'package:vps/data/services/fee_service.dart';
 import 'package:vps/data/models/attendance_record.dart';
 import 'package:intl/intl.dart';
+import 'package:vps/data/services/class_service.dart';
+import 'package:vps/data/models/class_model.dart';
 import 'package:vps/features/student/student_bus_tracker_screen.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -742,6 +744,162 @@ class PendingApprovalsMetricCard extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class AttendanceStatusCard extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final attendanceService = Provider.of<AttendanceService>(context);
+    final classService = Provider.of<ClassService>(context, listen: false);
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Attendance Status',
+                      style: GoogleFonts.outfit(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.onBackground,
+                      ),
+                    ),
+                    Text(
+                      'Real-time class completion',
+                      style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
+                    ),
+                  ],
+                ),
+                Container(
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.modernPrimary.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.playlist_add_check_rounded, color: AppColors.modernPrimary, size: 20),
+                ),
+              ],
+            ),
+            SizedBox(height: 20),
+            StreamBuilder<List<AttendanceRecord>>(
+              stream: attendanceService.getMarkedClassDetailsStream(DateTime.now()),
+              builder: (context, attendanceSnapshot) {
+                final records = attendanceSnapshot.data ?? [];
+                
+                return StreamBuilder<List<ClassModel>>(
+                  stream: classService.getAllClasses(),
+                  builder: (context, classSnapshot) {
+                    if (classSnapshot.connectionState == ConnectionState.waiting) {
+                      return Center(child: CircularProgressIndicator(strokeWidth: 2));
+                    }
+                    
+                    final classes = classSnapshot.data ?? [];
+                    classes.sort((a, b) => a.name.compareTo(b.name));
+
+                    // Add Teachers and Staff to the check list
+                    final List<Map<String, dynamic>> allTargets = classes.map((c) => {
+                      'id': c.id,
+                      'name': c.name,
+                      'type': 'class'
+                    }).toList();
+                    
+                    allTargets.add({'id': 'TEACHERS', 'name': 'Teachers', 'type': 'staff'});
+                    allTargets.add({'id': 'Drivers', 'name': 'Staff', 'type': 'staff'});
+
+                    return GridView.builder(
+                      shrinkWrap: true,
+                      physics: NeverScrollableScrollPhysics(),
+                      gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+                        maxCrossAxisExtent: 200,
+                        mainAxisExtent: 60,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                      ),
+                      itemCount: allTargets.length,
+                      itemBuilder: (context, index) {
+                        final target = allTargets[index];
+                        final record = records.firstWhere(
+                          (r) => r.classId == target['id'], 
+                          orElse: () => AttendanceRecord(id: '', classId: '', date: DateTime.now(), attendance: <String, String>{})
+                        );
+                        final isDone = record.id.isNotEmpty;
+
+                        return Container(
+                          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: isDone ? Colors.green.withOpacity(0.05) : Colors.grey.shade50,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: isDone ? Colors.green.withOpacity(0.2) : Colors.grey.shade200,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 24,
+                                height: 24,
+                                decoration: BoxDecoration(
+                                  color: isDone ? Colors.green : Colors.white,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: isDone ? Colors.green : Colors.grey.shade300,
+                                    width: 2,
+                                  ),
+                                ),
+                                child: isDone 
+                                    ? Icon(Icons.check, size: 16, color: Colors.white)
+                                    : null,
+                              ),
+                              SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      target['name'],
+                                      style: GoogleFonts.inter(
+                                        fontSize: 13,
+                                        fontWeight: isDone ? FontWeight.bold : FontWeight.w500,
+                                        color: isDone ? Colors.green.shade700 : Colors.black87,
+                                      ),
+                                    ),
+                                    if (isDone && record.markedByName != null)
+                                      Text(
+                                        'By: ${record.markedByName}',
+                                        style: TextStyle(fontSize: 9, color: Colors.green.shade600),
+                                        overflow: TextOverflow.ellipsis,
+                                      )
+                                    else if (!isDone)
+                                      Text(
+                                        'Pending',
+                                        style: TextStyle(fontSize: 9, color: Colors.grey.shade400),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    );
+                  },
+                );
+              },
+            ),
+          ],
         ),
       ),
     );

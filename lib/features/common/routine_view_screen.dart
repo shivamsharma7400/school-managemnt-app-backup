@@ -11,7 +11,7 @@ class RoutineViewScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: Scaffold(
         appBar: AppBar(
           title: Text('Routines'),
@@ -19,6 +19,7 @@ class RoutineViewScreen extends StatelessWidget {
             tabs: [
               Tab(text: 'Class Routine', icon: Icon(Icons.class_)),
               Tab(text: 'Bus Routine', icon: Icon(Icons.directions_bus)),
+              Tab(text: 'Time Table', icon: Icon(Icons.table_chart)),
             ],
           ),
         ),
@@ -26,6 +27,7 @@ class RoutineViewScreen extends StatelessWidget {
           children: [
             _RoutineList(type: 'class'),
             _RoutineList(type: 'bus'),
+            _RoutineList(type: 'timetable'),
           ],
         ),
       ),
@@ -100,7 +102,14 @@ class _RoutineList extends StatelessWidget {
                     : null,
                 leading: CircleAvatar(
                   backgroundColor: Colors.blue.shade50,
-                  child: Icon(type == 'class' ? Icons.book : Icons.airport_shuttle, color: Colors.blue),
+                  child: Icon(
+                    type == 'class' 
+                        ? Icons.book 
+                        : type == 'bus' 
+                            ? Icons.airport_shuttle 
+                            : Icons.table_chart, 
+                    color: Colors.blue
+                  ),
                 ),
               ),
             );

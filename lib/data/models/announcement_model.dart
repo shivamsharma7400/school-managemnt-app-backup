@@ -18,7 +18,7 @@ class Announcement {
   });
 
   factory Announcement.fromFirestore(DocumentSnapshot doc) {
-    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+    Map data = doc.data() as Map;
     return Announcement(
       id: doc.id,
       title: data['title'] ?? '',

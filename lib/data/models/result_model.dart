@@ -19,12 +19,15 @@ class ExamResult {
     required this.grade,
   });
 
-  factory ExamResult.fromFirestore(Map<String, dynamic> data, String id) {
+  factory ExamResult.fromFirestore(Map data, String id) {
     return ExamResult(
       id: id,
       studentId: data['studentId'] ?? '',
       examName: data['examName'] ?? '',
-      subjects: List<Map<String, dynamic>>.from(data['subjects'] ?? []),
+      subjects: (data['subjects'] as List?)?.map((item) {
+        final Map map = item as Map;
+        return map.map<String, dynamic>((k, v) => MapEntry(k.toString(), v));
+      }).toList() ?? <Map<String, dynamic>>[],
       totalObtainedMarks: (data['totalObtainedMarks'] as num?)?.toDouble() ?? 0.0,
       totalFullMarks: (data['totalFullMarks'] as num?)?.toDouble() ?? 0.0,
       rollNumber: data['rollNumber'] ?? '',

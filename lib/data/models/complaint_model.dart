@@ -25,7 +25,7 @@ class ComplaintModel {
     this.originalDescription,
   });
 
-  factory ComplaintModel.fromMap(Map<String, dynamic> map, String id) {
+  factory ComplaintModel.fromMap(Map map, String id) {
     return ComplaintModel(
       id: id,
       userId: map['userId'] ?? '',

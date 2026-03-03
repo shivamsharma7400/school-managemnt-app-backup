@@ -461,6 +461,7 @@ class __AIChatTabState extends State<_AIChatTab> {
   Widget _buildQuickAnalysisChips() {
     final chips = [
       {'label': 'Sync Data Center', 'icon': Icons.sync, 'action': () => _refreshSession()},
+      {'label': 'Syllabus Status', 'icon': Icons.menu_book, 'action': () => _sendMessage("Give me a Syllabus Progress report for all classes.")},
       {'label': 'Attendance Report', 'icon': Icons.calendar_today, 'action': () => _sendMessage("Give me a Attendance Report for today.")},
       {'label': 'Finance Summary', 'icon': Icons.account_balance_wallet, 'action': () => _sendMessage("Give me a Finance Summary for today.")},
       {'label': 'Pending Tasks', 'icon': Icons.assignment_late, 'action': () => _sendMessage("Give me a Pending Tasks report for today.")},

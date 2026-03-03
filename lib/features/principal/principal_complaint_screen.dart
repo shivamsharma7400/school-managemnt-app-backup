@@ -3,107 +3,269 @@ import 'package:provider/provider.dart';
 import 'package:vps/data/models/complaint_model.dart';
 import 'package:vps/data/services/complaint_service.dart';
 import 'package:intl/intl.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:vps/core/constants/app_constants.dart';
 
 class PrincipalComplaintListScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        backgroundColor: Colors.grey[50],
+        appBar: AppBar(
+          title: Text('Complaint Box', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+          elevation: 0,
+          bottom: TabBar(
+            tabs: [
+              Tab(text: 'Pending'),
+              Tab(text: 'History'),
+            ],
+            indicatorColor: AppColors.modernPrimary,
+            labelColor: AppColors.modernPrimary,
+            unselectedLabelColor: Colors.grey,
+            labelStyle: GoogleFonts.outfit(fontWeight: FontWeight.bold),
+          ),
+        ),
+        body: TabBarView(
+          children: [
+            _ComplaintList(isHistory: false),
+            _ComplaintList(isHistory: true),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ComplaintList extends StatelessWidget {
+  final bool isHistory;
+
+  const _ComplaintList({required this.isHistory});
+
+  @override
+  Widget build(BuildContext context) {
     final complaintService = Provider.of<ComplaintService>(context);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Complaint Box'),
-      ),
-      body: StreamBuilder<List<ComplaintModel>>(
-        stream: complaintService.getPendingComplaints(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
-          }
+    return StreamBuilder<List<ComplaintModel>>(
+      stream: isHistory ? complaintService.getProcessedComplaints() : complaintService.getPendingComplaints(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Center(child: CircularProgressIndicator());
+        }
 
-          if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          }
+        if (snapshot.hasError) {
+          return Center(child: Text('Error: ${snapshot.error}'));
+        }
 
-          final complaints = snapshot.data ?? [];
+        final complaints = snapshot.data ?? [];
 
-          if (complaints.isEmpty) {
-            return Center(child: Text('No pending complaints.'));
-          }
-
-          return ListView.builder(
-            padding: EdgeInsets.all(16),
-            itemCount: complaints.length,
-            itemBuilder: (context, index) {
-              final complaint = complaints[index];
-              return _ComplaintCard(complaint: complaint);
-            },
+        if (complaints.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(isHistory ? Icons.history : Icons.inbox, size: 64, color: Colors.grey[300]),
+                SizedBox(height: 16),
+                Text(
+                  isHistory ? 'No complaint history found.' : 'All clear! No pending complaints.',
+                  style: GoogleFonts.outfit(color: Colors.grey[500], fontSize: 16),
+                ),
+              ],
+            ),
           );
-        },
-      ),
+        }
+
+        return ListView.builder(
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+          itemCount: complaints.length,
+          itemBuilder: (context, index) {
+            final complaint = complaints[index];
+            return _ComplaintCard(complaint: complaint, isHistory: isHistory);
+          },
+        );
+      },
     );
   }
 }
 
 class _ComplaintCard extends StatelessWidget {
   final ComplaintModel complaint;
+  final bool isHistory;
 
-  const _ComplaintCard({required this.complaint});
+  const _ComplaintCard({required this.complaint, required this.isHistory});
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: EdgeInsets.only(bottom: 16),
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Chip(
-                  label: Text(complaint.userRole.toUpperCase(), style: TextStyle(fontSize: 10)),
-                  backgroundColor: Colors.blue.shade50,
-                  labelStyle: TextStyle(color: Colors.blue),
+    final bool isApproved = complaint.status == 'approved';
+    final Color statusColor = isHistory 
+        ? (isApproved ? Colors.green : Colors.red)
+        : Colors.orange;
+
+    return Container(
+      margin: EdgeInsets.only(bottom: 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: IntrinsicHeight(
+          child: Row(
+            children: [
+              Container(
+                width: 6,
+                color: statusColor,
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: statusColor.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  complaint.userRole.toUpperCase(),
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: statusColor,
+                                  ),
+                                ),
+                              ),
+                              if (isHistory) ...[
+                                SizedBox(width: 8),
+                                Container(
+                                  padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: statusColor.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    complaint.status.toUpperCase(),
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: statusColor,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                          Text(
+                            DateFormat('MMM d, h:mm a').format(complaint.timestamp),
+                            style: GoogleFonts.outfit(color: Colors.grey, fontSize: 11),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 12),
+                      Text(
+                        complaint.subject,
+                        style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        'From: ${complaint.userName}',
+                        style: GoogleFonts.outfit(
+                          color: Colors.grey[600], 
+                          fontSize: 13,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                      SizedBox(height: 16),
+                      Text(
+                        complaint.description,
+                        style: GoogleFonts.inter(height: 1.5, color: Colors.black87),
+                      ),
+                      if (isHistory && complaint.response != null) ...[
+                        SizedBox(height: 16),
+                        Container(
+                          padding: EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[50],
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.grey[200]!),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(Icons.reply, size: 16, color: Colors.grey[600]),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'Principal\'s Response:',
+                                    style: GoogleFonts.outfit(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                      color: Colors.grey[800],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: 8),
+                              Text(
+                                complaint.response!,
+                                style: GoogleFonts.inter(
+                                  fontSize: 13,
+                                  color: Colors.black54,
+                                  fontStyle: FontStyle.italic,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                      if (!isHistory) ...[
+                        SizedBox(height: 20),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            TextButton.icon(
+                              onPressed: () => _showRejectDialog(context, complaint),
+                              icon: Icon(Icons.close, size: 18),
+                              label: Text('Reject'),
+                              style: TextButton.styleFrom(foregroundColor: Colors.red),
+                            ),
+                            SizedBox(width: 12),
+                            ElevatedButton.icon(
+                              onPressed: () => _showApproveDialog(context, complaint),
+                              icon: Icon(Icons.check, size: 18),
+                              label: Text('Approve'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green, 
+                                foregroundColor: Colors.white,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
-                Text(
-                  DateFormat('MMM d, y • h:mm a').format(complaint.timestamp),
-                  style: TextStyle(color: Colors.grey, fontSize: 12),
-                ),
-              ],
-            ),
-            SizedBox(height: 8),
-            Text(
-              complaint.subject,
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-            ),
-            SizedBox(height: 4),
-            Text(
-              'From: ${complaint.userName}',
-              style: TextStyle(color: Colors.grey[700], fontStyle: FontStyle.italic),
-            ),
-            SizedBox(height: 12),
-            Text(complaint.description),
-            SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                OutlinedButton(
-                  onPressed: () => _showRejectDialog(context, complaint),
-                  child: Text('Reject'),
-                  style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
-                ),
-                SizedBox(width: 8),
-                ElevatedButton(
-                  onPressed: () => _showApproveDialog(context, complaint),
-                  child: Text('Approve'),
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
-                ),
-              ],
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -148,7 +310,7 @@ class _ResponseDialogState extends State<_ResponseDialog> {
   @override
   void initState() {
     super.initState();
-    _generateAIResponse(); // Auto-generate response when dialog opens
+    _generateAIResponse();
   }
 
   Future<void> _generateAIResponse() async {
@@ -193,9 +355,13 @@ class _ResponseDialogState extends State<_ResponseDialog> {
       }
       
       if (mounted) {
-        Navigator.pop(context); // Close dialog
+        Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(widget.isApprove ? 'Complaint Approved' : 'Complaint Rejected')),
+          SnackBar(
+            content: Text(widget.isApprove ? 'Complaint Approved Successfully' : 'Complaint Rejected Successfully'),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: widget.isApprove ? Colors.green : Colors.red,
+          ),
         );
       }
     } catch (e) {
@@ -216,9 +382,13 @@ class _ResponseDialogState extends State<_ResponseDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(widget.isApprove ? 'Approve Complaint' : 'Reject Complaint'),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: Text(
+        widget.isApprove ? 'Submit Approval' : 'Submit Rejection',
+        style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
+      ),
       content: Container(
-        width: double.maxFinite,
+        width: MediaQuery.of(context).size.width * 0.8,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -228,9 +398,9 @@ class _ResponseDialogState extends State<_ResponseDialog> {
                 padding: const EdgeInsets.only(bottom: 12.0),
                 child: Row(
                   children: [
-                    SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
-                    SizedBox(width: 8),
-                    Text('Generating AI Response...', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.modernPrimary)),
+                    SizedBox(width: 12),
+                    Text('AI is drafting your response...', style: GoogleFonts.outfit(fontSize: 12, color: Colors.grey[600])),
                   ],
                 ),
               ),
@@ -238,21 +408,26 @@ class _ResponseDialogState extends State<_ResponseDialog> {
               controller: _responseController,
               decoration: InputDecoration(
                 labelText: 'Response',
-                hintText: 'Enter your response here...',
-                border: OutlineInputBorder(),
-              ),
-              maxLines: 5,
-            ),
-            SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                 TextButton.icon(
-                  onPressed: _isGenerating ? null : _generateAIResponse,
-                  icon: Icon(Icons.refresh, size: 16),
-                  label: Text('Regenerate AI'),
+                labelStyle: GoogleFonts.outfit(fontSize: 14),
+                hintText: 'Enter your final decision or reason...',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: AppColors.modernPrimary),
                 ),
-              ],
+              ),
+              maxLines: 6,
+              style: GoogleFonts.inter(fontSize: 14),
+            ),
+            SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: _isGenerating ? null : _generateAIResponse,
+                icon: Icon(Icons.auto_fix_high, size: 16),
+                label: Text('Redraft with AI', style: GoogleFonts.outfit(fontSize: 12)),
+                style: TextButton.styleFrom(foregroundColor: AppColors.modernPrimary),
+              ),
             )
           ],
         ),
@@ -260,16 +435,19 @@ class _ResponseDialogState extends State<_ResponseDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: Text('Cancel'),
+          child: Text('Cancel', style: GoogleFonts.outfit(color: Colors.grey)),
         ),
         ElevatedButton(
           onPressed: _isSubmitting ? null : _submitResponse,
           child: _isSubmitting 
               ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-              : Text('Send Response'),
+              : Text('Confirm Action', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
           style: ElevatedButton.styleFrom(
             backgroundColor: widget.isApprove ? Colors.green : Colors.red,
             foregroundColor: Colors.white,
+            elevation: 0,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
           ),
         ),
       ],

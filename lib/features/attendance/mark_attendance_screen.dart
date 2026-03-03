@@ -127,26 +127,50 @@ class _MarkAttendanceScreenState extends State<MarkAttendanceScreen> with Single
   }
 
   Widget _buildClassDropdown(String? teacherId) {
-    return StreamBuilder<List<ClassModel>>(
-      stream: Provider.of<ClassService>(context).getAllClasses(),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) return LinearProgressIndicator();
-        final classes = snapshot.data!;
+    return StreamBuilder<List<String>>(
+      stream: Provider.of<AttendanceService>(context).getMarkedClassIdsStream(_selectedDate),
+      builder: (context, markedSnapshot) {
+        final markedClassIds = markedSnapshot.data ?? [];
         
-        return DropdownButtonFormField<String>(
-          value: _selectedClassId,
-          decoration: InputDecoration(labelText: 'Select Class', border: OutlineInputBorder()),
-          items: classes.map((c) {
-            return DropdownMenuItem(value: c.id, child: Text(c.name));
-          }).toList(),
-          onChanged: (val) {
-            setState(() {
-              _selectedClassId = val;
-              _attendanceStatus.clear(); 
-            });
+        return StreamBuilder<List<ClassModel>>(
+          stream: Provider.of<ClassService>(context).getAllClasses(),
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) return LinearProgressIndicator();
+            final classes = snapshot.data!;
+            
+            return DropdownButtonFormField<String>(
+              value: _selectedClassId,
+              decoration: InputDecoration(
+                labelText: 'Select Class', 
+                border: OutlineInputBorder(),
+                helperText: 'Classes with checkmark (✓) have completed attendance.',
+                helperStyle: TextStyle(color: Colors.green, fontSize: 10),
+              ),
+              items: classes.map((c) {
+                final isDone = markedClassIds.contains(c.id);
+                return DropdownMenuItem(
+                  value: c.id, 
+                  child: Row(
+                    children: [
+                      Text(c.name),
+                      if (isDone) ...[
+                        SizedBox(width: 8),
+                        Icon(Icons.check_circle, color: Colors.green, size: 16),
+                      ],
+                    ],
+                  )
+                );
+              }).toList(),
+              onChanged: (val) {
+                setState(() {
+                  _selectedClassId = val;
+                  _attendanceStatus.clear(); 
+                });
+              },
+            );
           },
         );
-      },
+      }
     );
   }
 
@@ -155,56 +179,88 @@ class _MarkAttendanceScreenState extends State<MarkAttendanceScreen> with Single
       return Center(child: Text("Select a Class to view students"));
     }
 
-    Stream<List<Map<String, dynamic>>> stream;
-    if (_isTeacherMode) {
-      stream = Provider.of<UserService>(context).getTeachers();
-    } else if (_isStaffMode) {
-      stream = Provider.of<UserService>(context).getDrivers();
-    } else {
-      stream = Provider.of<UserService>(context).getStudentsByClass(_selectedClassId!);
-    }
+    return StreamBuilder<List<String>>(
+      stream: Provider.of<AttendanceService>(context).getMarkedClassIdsStream(_selectedDate),
+      builder: (context, markedSnapshot) {
+        final markedClassIds = markedSnapshot.data ?? [];
+        final String currentTargetId;
+        if (_isTeacherMode) currentTargetId = 'TEACHERS';
+        else if (_isStaffMode) currentTargetId = 'Drivers';
+        else currentTargetId = _selectedClassId ?? '';
 
-    return StreamBuilder<List<Map<String, dynamic>>>(
-      stream: stream,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) return Center(child: CircularProgressIndicator());
-        
-        final users = snapshot.data ?? [];
+        final bool isAlreadyMarked = markedClassIds.contains(currentTargetId);
 
-        if (users.isEmpty) return Center(child: Text("No records found."));
+        Stream<List<Map<String, dynamic>>> stream;
+        if (_isTeacherMode) {
+          stream = Provider.of<UserService>(context).getTeachers();
+        } else if (_isStaffMode) {
+          stream = Provider.of<UserService>(context).getDrivers();
+        } else {
+          stream = Provider.of<UserService>(context).getStudentsByClass(_selectedClassId!);
+        }
 
-        return ListView.builder(
-          itemCount: users.length,
-          itemBuilder: (context, index) {
-            final user = users[index];
-            final id = user['id'];
-            final name = user['name'] ?? 'Unknown';
-
-            // Default to Present if not set
-            if (!_attendanceStatus.containsKey(id)) {
-              _attendanceStatus[id] = 'Present';
-            }
-
-            return Card(
-              margin: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              child: ListTile(
-                leading: CircleAvatar(child: Text(name[0].toUpperCase())),
-                title: Text(name),
-                subtitle: Row(
-                  mainAxisSize: MainAxisSize.min,
+        return Column(
+          children: [
+            if (isAlreadyMarked)
+              Container(
+                width: double.infinity,
+                color: Colors.green.shade50,
+                padding: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                child: Row(
                   children: [
-                    _statusIcon(id, 'Present', Icons.check_circle, Colors.green),
-                    SizedBox(width: 16),
-                    _statusIcon(id, 'Absent', Icons.cancel, Colors.red),
-                    SizedBox(width: 16),
-                    _statusIcon(id, 'Leave', Icons.info, Colors.orange),
+                    Icon(Icons.check_circle, color: Colors.green, size: 16),
+                    SizedBox(width: 8),
+                    Text('Attendance already marked for this day', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 12)),
                   ],
                 ),
               ),
-            );
-          },
+            Expanded(
+              child: StreamBuilder<List<Map<String, dynamic>>>(
+                stream: stream,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) return Center(child: CircularProgressIndicator());
+                  
+                  final users = snapshot.data ?? [];
+
+                  if (users.isEmpty) return Center(child: Text("No records found."));
+
+                  return ListView.builder(
+                    itemCount: users.length,
+                    itemBuilder: (context, index) {
+                      final user = users[index];
+                      final id = user['id'];
+                      final name = user['name'] ?? 'Unknown';
+
+                      // Default to Present if not set
+                      if (!_attendanceStatus.containsKey(id)) {
+                        _attendanceStatus[id] = 'Present';
+                      }
+
+                      return Card(
+                        margin: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                        child: ListTile(
+                          leading: CircleAvatar(child: Text(name[0].toUpperCase())),
+                          title: Text(name),
+                          subtitle: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              _statusIcon(id, 'Present', Icons.check_circle, Colors.green),
+                              SizedBox(width: 16),
+                              _statusIcon(id, 'Absent', Icons.cancel, Colors.red),
+                              SizedBox(width: 16),
+                              _statusIcon(id, 'Leave', Icons.info, Colors.orange),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
         );
-      },
+      }
     );
   }
 
@@ -232,10 +288,14 @@ class _MarkAttendanceScreenState extends State<MarkAttendanceScreen> with Single
        classId = _selectedClassId!;
     }
     
+    final authService = Provider.of<AuthService>(context, listen: false);
+    
     await Provider.of<AttendanceService>(context, listen: false).markAttendance(
       classId,
       _selectedDate,
       _attendanceStatus,
+      userId: authService.user?.uid,
+      userName: authService.userName,
     );
     
     setState(() => _isLoading = false);

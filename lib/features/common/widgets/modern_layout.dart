@@ -28,6 +28,7 @@ import 'package:vps/features/principal/exam_setup_screen.dart';
 import 'package:vps/features/academics/syllabus_report_screen.dart';
 import 'package:vps/features/principal/strategic_planning_screen.dart';
 import 'package:vps/features/data_center/data_export_screen.dart';
+import 'package:vps/features/fees/budget_calculation_screen.dart';
 import 'package:vps/features/principal/principal_complaint_screen.dart';
 import 'package:vps/features/profile/profile_screen.dart';
 
@@ -191,6 +192,7 @@ class _ModernLayoutState extends State<ModernLayout> {
                   items: [
                     _SidebarSubItem(title: 'Student Fee', onTap: () => _navigateTo(context, FeeManagementScreen())),
                     _SidebarSubItem(title: 'Staff Salary', onTap: () => _navigateTo(context, StaffSalaryManagementScreen())),
+                    _SidebarSubItem(title: 'School Budget', onTap: () => _navigateTo(context, BudgetCalculationScreen())),
                     _SidebarSubItem(title: 'Transactions', onTap: () => _navigateTo(context, TransactionHistoryScreen())),
                   ],
                 ),

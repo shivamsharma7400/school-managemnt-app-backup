@@ -24,6 +24,7 @@ class ExamQuestionEditorScreen extends StatefulWidget {
 class _ExamQuestionEditorScreenState extends State<ExamQuestionEditorScreen> {
   final _formKey = GlobalKey<FormState>();
   final ExamQuestionService _service = ExamQuestionService();
+  final ScrollController _mainScrollController = ScrollController();
 
   late TextEditingController _schoolNameController;
   late TextEditingController _addressController;
@@ -36,6 +37,7 @@ class _ExamQuestionEditorScreenState extends State<ExamQuestionEditorScreen> {
   String? _selectedClassName;
 
   List<SectionController> _sectionControllers = [];
+  int _activeSectionIndex = 0;
 
   @override
   void initState() {
@@ -44,7 +46,7 @@ class _ExamQuestionEditorScreenState extends State<ExamQuestionEditorScreen> {
     _schoolNameController = TextEditingController(text: p?.schoolName ?? '');
     _addressController = TextEditingController(text: p?.address ?? '');
     _examNameController = TextEditingController(text: p?.examName ?? widget.exam.name);
-    _sessionController = TextEditingController(text: p?.session ?? '2025-2026');
+    _sessionController = TextEditingController(text: p?.session ?? '2025-26');
     _subjectController = TextEditingController(text: p?.subject ?? '');
     _timeLimitController = TextEditingController(text: p?.timeLimit ?? '3 Hrs.');
     _fullMarksController = TextEditingController(text: p?.fullMarks.toString() ?? '80');
@@ -56,7 +58,7 @@ class _ExamQuestionEditorScreenState extends State<ExamQuestionEditorScreen> {
     } else {
       _sectionControllers = [
         SectionController(
-          title: TextEditingController(text: 'निम्नलिखित प्रश्नों के उत्तर दें-'),
+          title: TextEditingController(text: 'I. निम्नलिखित प्रश्नों के उत्तर दें-'),
           marksLabel: TextEditingController(text: '[10 x 1 = 10]'),
           items: [ItemController(questionText: TextEditingController(text: ''), marks: TextEditingController(text: ''))],
         )
@@ -72,7 +74,7 @@ class _ExamQuestionEditorScreenState extends State<ExamQuestionEditorScreen> {
     final info = await Provider.of<SchoolInfoService>(context, listen: false).getSchoolInfo();
     if (info != null) {
       setState(() {
-        _schoolNameController.text = info['schoolName'] ?? '';
+        _schoolNameController.text = info['name'] ?? info['schoolName'] ?? '';
         _addressController.text = info['address'] ?? '';
       });
     }
@@ -80,6 +82,7 @@ class _ExamQuestionEditorScreenState extends State<ExamQuestionEditorScreen> {
 
   @override
   void dispose() {
+    _mainScrollController.dispose();
     _schoolNameController.dispose();
     _addressController.dispose();
     _examNameController.dispose();
@@ -100,6 +103,7 @@ class _ExamQuestionEditorScreenState extends State<ExamQuestionEditorScreen> {
         marksLabel: TextEditingController(),
         items: [ItemController(questionText: TextEditingController(), marks: TextEditingController())],
       ));
+      _activeSectionIndex = _sectionControllers.length - 1;
     });
   }
 
@@ -107,6 +111,9 @@ class _ExamQuestionEditorScreenState extends State<ExamQuestionEditorScreen> {
     setState(() {
       _sectionControllers[index].dispose();
       _sectionControllers.removeAt(index);
+      if (_activeSectionIndex >= _sectionControllers.length) {
+        _activeSectionIndex = _sectionControllers.isEmpty ? 0 : _sectionControllers.length - 1;
+      }
     });
   }
 
@@ -141,7 +148,11 @@ class _ExamQuestionEditorScreenState extends State<ExamQuestionEditorScreen> {
   Future<void> _save() async {
     if (_formKey.currentState!.validate()) {
       if (_selectedClassName == null) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Please select a class'), backgroundColor: Colors.red));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Please select a class'), 
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+        ));
         return;
       }
 
@@ -169,218 +180,440 @@ class _ExamQuestionEditorScreenState extends State<ExamQuestionEditorScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Color(0xFFF8F9FE),
       appBar: AppBar(
-        title: Text(widget.paper == null ? 'New Question Paper' : 'Edit Question Paper', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+        elevation: 0,
+        backgroundColor: Colors.white,
+        title: Text(
+          widget.paper == null ? 'Create Question Paper' : 'Edit Question Paper', 
+          style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: Colors.black87)
+        ),
+        iconTheme: IconThemeData(color: Colors.black87),
         actions: [
-          IconButton(icon: Icon(Icons.save), onPressed: _save),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: ElevatedButton.icon(
+              onPressed: _save,
+              icon: Icon(Icons.cloud_upload_outlined, size: 18),
+              label: Text("Save Paper"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.modernPrimary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                elevation: 0,
+              ),
+            ),
+          ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildHeaderSection(),
-              SizedBox(height: 24),
-              Text('Questions', style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold)),
-              SizedBox(height: 8),
-              ..._sectionControllers.asMap().entries.map((entry) => _buildSectionEditor(entry.key, entry.value)),
-              SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: _addSection,
-                  icon: Icon(Icons.library_add),
-                  label: Text('Add New Section'),
+      body: Row(
+        children: [
+          _buildSidebar(),
+          Expanded(
+            child: Form(
+              key: _formKey,
+              child: SingleChildScrollView(
+                controller: _mainScrollController,
+                padding: EdgeInsets.all(24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildCompactHeader(),
+                    const SizedBox(height: 32),
+                    if (_sectionControllers.isEmpty)
+                      _buildEmptyState()
+                    else
+                      Column(
+                        children: _sectionControllers.asMap().entries.map((entry) {
+                          return _buildSectionEditor(entry.key, entry.value);
+                        }).toList(),
+                      ),
+                  ],
                 ),
               ),
-              SizedBox(height: 100),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
 
-  Widget _buildHeaderSection() {
-    return Card(
-      child: Padding(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          children: [
-            TextFormField(
-              controller: _schoolNameController,
-              decoration: InputDecoration(labelText: 'School Name'),
-              validator: (v) => v!.isEmpty ? 'Required' : null,
-            ),
-            TextFormField(
-              controller: _addressController,
-              decoration: InputDecoration(labelText: 'Address'),
-              validator: (v) => v!.isEmpty ? 'Required' : null,
-            ),
-            Row(
-              children: [
-                Expanded(
-                  child: TextFormField(
-                    controller: _examNameController,
-                    decoration: InputDecoration(labelText: 'Exam Name'),
-                  ),
-                ),
-                SizedBox(width: 8),
-                Expanded(
-                  child: TextFormField(
-                    controller: _sessionController,
-                    decoration: InputDecoration(labelText: 'Session'),
-                  ),
-                ),
-              ],
-            ),
-            StreamBuilder<List<ClassModel>>(
-              stream: Provider.of<ClassService>(context, listen: false).getAllClasses(),
-              builder: (context, snapshot) {
-                final classes = snapshot.data ?? [];
-                classes.sort((a, b) => a.name.compareTo(b.name));
-                return DropdownButtonFormField<String>(
-                  value: _selectedClassName,
-                  decoration: InputDecoration(labelText: 'Class'),
-                  items: classes.map((c) => DropdownMenuItem(value: c.name, child: Text(c.name))).toList(),
-                  onChanged: (v) => setState(() => _selectedClassName = v),
-                  validator: (v) => v == null ? 'Required' : null,
-                );
-              },
-            ),
-            Row(
-              children: [
-                Expanded(
-                  child: TextFormField(
-                    controller: _subjectController,
-                    decoration: InputDecoration(labelText: 'Subject'),
-                    validator: (v) => v!.isEmpty ? 'Required' : null,
-                  ),
-                ),
-                SizedBox(width: 8),
-                Expanded(
-                  child: TextFormField(
-                    controller: _fullMarksController,
-                    decoration: InputDecoration(labelText: 'Full Marks'),
-                    keyboardType: TextInputType.number,
-                  ),
-                ),
-              ],
-            ),
-            Row(
-              children: [
-                Expanded(
-                  child: ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text('Date: ${DateFormat('dd MMM yyyy').format(_selectedDate)}'),
-                    trailing: Icon(Icons.calendar_today, size: 20),
-                    onTap: () async {
-                      final picked = await showDatePicker(
-                        context: context,
-                        initialDate: _selectedDate,
-                        firstDate: DateTime(2000),
-                        lastDate: DateTime(2100),
-                      );
-                      if (picked != null) setState(() => _selectedDate = picked);
-                    },
-                  ),
-                ),
-                Expanded(
-                  child: TextFormField(
-                    controller: _timeLimitController,
-                    decoration: InputDecoration(labelText: 'Time Limit'),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
+  Widget _buildSidebar() {
+    return Container(
+      width: 280,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(right: BorderSide(color: Colors.grey.shade200)),
       ),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text("Sections", style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 18)),
+                IconButton(
+                  icon: Icon(Icons.add_circle, color: AppColors.modernPrimary),
+                  onPressed: _addSection,
+                )
+              ],
+            ),
+          ),
+          Expanded(
+            child: ReorderableListView(
+              padding: EdgeInsets.symmetric(horizontal: 12),
+              onReorder: (oldIndex, newIndex) {
+                setState(() {
+                  if (newIndex > oldIndex) newIndex -= 1;
+                  final item = _sectionControllers.removeAt(oldIndex);
+                  _sectionControllers.insert(newIndex, item);
+                });
+              },
+              children: _sectionControllers.asMap().entries.map((entry) {
+                final index = entry.key;
+                final sc = entry.value;
+                final isActive = _activeSectionIndex == index;
+                
+                return ListTile(
+                  key: ValueKey(sc),
+                  onTap: () {
+                    setState(() => _activeSectionIndex = index);
+                  },
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  selected: isActive,
+                  selectedTileColor: AppColors.modernPrimary.withOpacity(0.08),
+                  leading: CircleAvatar(
+                    radius: 12,
+                    backgroundColor: isActive ? AppColors.modernPrimary : Colors.grey.shade200,
+                    child: Text("${index + 1}", style: TextStyle(fontSize: 10, color: isActive ? Colors.white : Colors.grey)),
+                  ),
+                  title: Text(
+                    sc.title.text.isEmpty ? "Untitled Section" : sc.title.text,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.inter(
+                      fontSize: 13, 
+                      fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                      color: isActive ? AppColors.modernPrimary : Colors.black87,
+                    ),
+                  ),
+                  trailing: IconButton(
+                    icon: Icon(Icons.close, size: 16, color: Colors.grey.shade400),
+                    onPressed: () => _removeSection(index),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          _buildQuickTips(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickTips() {
+    return Container(
+      margin: EdgeInsets.all(16),
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Color(0xFFF0F2FF),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.lightbulb_outline, size: 16, color: AppColors.modernPrimary),
+              SizedBox(width: 8),
+              Text("Editor Tip", style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.modernPrimary)),
+            ],
+          ),
+          SizedBox(height: 8),
+          Text(
+            "Use the sidebar to jump between sections. You can drag sections to reorder them.",
+            style: GoogleFonts.inter(fontSize: 11, color: Colors.black54),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompactHeader() {
+    return Container(
+      padding: EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 20, offset: Offset(0, 10))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(10),
+                decoration: BoxDecoration(color: AppColors.modernPrimary.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                child: Icon(Icons.school_outlined, color: AppColors.modernPrimary),
+              ),
+              SizedBox(width: 16),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text("Paper Configuration", style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text("Define the basic details of the question paper", style: GoogleFonts.inter(fontSize: 12, color: Colors.grey)),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          Row(
+            children: [
+              Expanded(child: _buildTextField(_schoolNameController, "School Name", Icons.account_balance)),
+              const SizedBox(width: 16),
+              Expanded(child: _buildTextField(_addressController, "Location/Address", Icons.location_on_outlined)),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(child: _buildTextField(_examNameController, "Examination Name", Icons.assignment_outlined)),
+              const SizedBox(width: 16),
+              Expanded(child: _buildTextField(_sessionController, "Session", Icons.calendar_today_outlined)),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: StreamBuilder<List<ClassModel>>(
+                  stream: Provider.of<ClassService>(context, listen: false).getAllClasses(),
+                  builder: (context, snapshot) {
+                    final classes = snapshot.data ?? [];
+                    classes.sort((a, b) => a.name.compareTo(b.name));
+                    return DropdownButtonFormField<String>(
+                      value: _selectedClassName,
+                      style: GoogleFonts.inter(fontSize: 14, color: Colors.black87),
+                      decoration: InputDecoration(
+                        labelText: 'Standard / Class',
+                        prefixIcon: Icon(Icons.class_outlined, size: 20),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
+                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
+                      ),
+                      items: classes.map((c) => DropdownMenuItem(value: c.name, child: Text(c.name))).toList(),
+                      onChanged: (v) => setState(() => _selectedClassName = v),
+                      validator: (v) => v == null ? 'Required' : null,
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(child: _buildTextField(_subjectController, "Subject", Icons.book_outlined)),
+              const SizedBox(width: 16),
+              Expanded(child: _buildTextField(_fullMarksController, "Max Marks", Icons.star_border, keyboardType: TextInputType.number)),
+              const SizedBox(width: 16),
+              Expanded(child: _buildTextField(_timeLimitController, "Duration", Icons.timer_outlined)),
+              const SizedBox(width: 16),
+              Expanded(
+                child: InkWell(
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: _selectedDate,
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime(2100),
+                    );
+                    if (picked != null) setState(() => _selectedDate = picked);
+                  },
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey.shade200),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.event_note, size: 20, color: Colors.grey),
+                        SizedBox(width: 8),
+                        Text(DateFormat('dd MMM yy').format(_selectedDate), style: GoogleFonts.inter(fontSize: 14)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTextField(TextEditingController controller, String label, IconData icon, {TextInputType keyboardType = TextInputType.text}) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: keyboardType,
+      style: GoogleFonts.inter(fontSize: 14),
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon, size: 20),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
+        isDense: true,
+      ),
+      validator: (v) => v!.isEmpty ? 'Required' : null,
     );
   }
 
   Widget _buildSectionEditor(int sectionIndex, SectionController sc) {
-    return Card(
-      margin: EdgeInsets.only(bottom: 16),
-      child: Padding(
-        padding: EdgeInsets.all(12),
-        child: Column(
-          children: [
-            Row(
+    bool isHindiTitle = RegExp(r'[\u0900-\u097F]').hasMatch(sc.title.text);
+
+    return Container(
+      key: ValueKey(sc),
+      margin: EdgeInsets.only(bottom: 24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: _activeSectionIndex == sectionIndex ? AppColors.modernPrimary.withOpacity(0.3) : Colors.transparent),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 20, offset: Offset(0, 5))],
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade50,
+              borderRadius: BorderRadius.only(topLeft: Radius.circular(20), topRight: Radius.circular(20)),
+            ),
+            child: Row(
               children: [
-                CircleAvatar(child: Text('${sectionIndex + 1}'), radius: 15),
-                SizedBox(width: 8),
+                CircleAvatar(
+                  radius: 14,
+                  backgroundColor: AppColors.modernPrimary,
+                  child: Text("${sectionIndex + 1}", style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                ),
+                SizedBox(width: 16),
                 Expanded(
                   child: TextFormField(
                     controller: sc.title,
-                    decoration: InputDecoration(hintText: 'Section Title (e.g. Write answers...)'),
+                    style: isHindiTitle 
+                      ? GoogleFonts.hind(fontSize: 16, fontWeight: FontWeight.bold)
+                      : GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold),
+                    decoration: InputDecoration(
+                      hintText: 'Section Instructions (e.g. Write answers...)',
+                      border: InputBorder.none,
+                    ),
                   ),
                 ),
-                SizedBox(width: 8),
-                SizedBox(
-                  width: 100,
+                const SizedBox(width: 16),
+                Container(
+                  width: 140,
                   child: TextFormField(
                     controller: sc.marksLabel,
-                    decoration: InputDecoration(hintText: '[10 x 1 = 10]'),
+                    style: GoogleFonts.outfit(fontSize: 14, color: AppColors.modernPrimary, fontWeight: FontWeight.bold),
+                    decoration: InputDecoration(
+                      hintText: '[10 x 1 = 10]',
+                      border: InputBorder.none,
+                      prefixIcon: Icon(Icons.stars, size: 16, color: AppColors.modernPrimary),
+                    ),
                   ),
                 ),
-                IconButton(icon: Icon(Icons.delete_outline, color: Colors.grey), onPressed: () => _removeSection(sectionIndex)),
               ],
             ),
-            Divider(),
-            ...sc.items.asMap().entries.map((entry) => _buildItemEditor(sectionIndex, entry.key, entry.value)),
-            TextButton.icon(
-              onPressed: () => _addItem(sectionIndex),
-              icon: Icon(Icons.add),
-              label: Text('Add Question Item'),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              children: [
+                ...sc.items.asMap().entries.map((entry) => _buildItemEditor(sectionIndex, entry.key, entry.value)),
+                const SizedBox(height: 16),
+                OutlinedButton.icon(
+                  onPressed: () => _addItem(sectionIndex),
+                  icon: Icon(Icons.add_circle_outline, size: 20),
+                  label: Text("Add Question"),
+                  style: OutlinedButton.styleFrom(
+                    padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildItemEditor(int sectionIndex, int itemIndex, ItemController ic) {
     final alpha = 'abcdefghijklmnopqrstuvwxyz';
+    bool isHindi = RegExp(r'[\u0900-\u097F]').hasMatch(ic.questionText.text);
+
     return Padding(
-      padding: const EdgeInsets.only(left: 16, bottom: 8),
+      padding: const EdgeInsets.only(bottom: 20),
       child: Column(
         children: [
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Padding(
-                padding: const EdgeInsets.only(top: 12),
-                child: Text('${alpha[itemIndex]}) ', style: TextStyle(fontWeight: FontWeight.bold)),
+              Container(
+                margin: EdgeInsets.only(top: 8),
+                width: 30,
+                child: Text("${alpha[itemIndex]})", style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: Colors.grey)),
               ),
               Expanded(
                 child: TextFormField(
                   controller: ic.questionText,
-                  decoration: InputDecoration(hintText: 'Enter question text...'),
                   maxLines: null,
+                  style: isHindi 
+                    ? GoogleFonts.hind(fontSize: 15)
+                    : GoogleFonts.inter(fontSize: 15),
+                  decoration: InputDecoration(
+                    hintText: 'Type your question here...',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade100)),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade100)),
+                    filled: true,
+                    fillColor: Color(0xFFFCFCFD),
+                    contentPadding: EdgeInsets.all(16),
+                  ),
                 ),
               ),
-              SizedBox(width: 8),
-              SizedBox(
-                width: 60,
+              const SizedBox(width: 12),
+              Container(
+                width: 70,
                 child: TextFormField(
                   controller: ic.marks,
-                  decoration: InputDecoration(hintText: '[4]'),
+                  textAlign: TextAlign.center,
+                  decoration: InputDecoration(
+                    hintText: '[4]',
+                    labelText: 'Marks',
+                    isDense: true,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
                 ),
               ),
-              IconButton(icon: Icon(Icons.remove_circle_outline, size: 20, color: Colors.grey), onPressed: () => _removeItem(sectionIndex, itemIndex)),
+              IconButton(
+                icon: Icon(Icons.delete_sweep_outlined, color: Colors.grey.shade400, size: 20),
+                onPressed: () => _removeItem(sectionIndex, itemIndex),
+              ),
             ],
           ),
-          ...ic.subQuestions.asMap().entries.map((subEntry) => _buildSubItemEditor(sectionIndex, itemIndex, subEntry.key, subEntry.value)),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton.icon(
-              onPressed: () => _addSubQuestion(sectionIndex, itemIndex),
-              icon: Icon(Icons.add, size: 16),
-              label: Text('Add Sub-Question (i, ii...)', style: TextStyle(fontSize: 12)),
+          if (ic.subQuestions.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(left: 30, top: 12),
+              child: Column(
+                children: ic.subQuestions.asMap().entries.map((subEntry) => _buildSubItemEditor(sectionIndex, itemIndex, subEntry.key, subEntry.value)).toList(),
+              ),
+            ),
+          Padding(
+            padding: const EdgeInsets.only(left: 30, top: 4),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: () => _addSubQuestion(sectionIndex, itemIndex),
+                icon: Icon(Icons.add_link, size: 16),
+                label: Text("Add sub-item (i, ii...)", style: TextStyle(fontSize: 12)),
+              ),
             ),
           ),
         ],
@@ -390,19 +623,49 @@ class _ExamQuestionEditorScreenState extends State<ExamQuestionEditorScreen> {
 
   Widget _buildSubItemEditor(int sectionIndex, int itemIndex, int subIndex, TextEditingController subController) {
     final roman = ['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x'];
+    bool isHindi = RegExp(r'[\u0900-\u097F]').hasMatch(subController.text);
+
     return Padding(
-      padding: const EdgeInsets.only(left: 32, top: 4),
+      padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         children: [
-          Text('${roman[subIndex]}) ', style: TextStyle(fontSize: 12)),
+          Container(
+            width: 30,
+            child: Text("${roman[subIndex]})", style: TextStyle(fontSize: 12, color: Colors.grey)),
+          ),
           Expanded(
             child: TextFormField(
               controller: subController,
-              decoration: InputDecoration(hintText: 'Sub-question text...', isDense: true),
-              style: TextStyle(fontSize: 13),
+              style: isHindi 
+                ? GoogleFonts.hind(fontSize: 14)
+                : GoogleFonts.inter(fontSize: 14),
+              decoration: InputDecoration(
+                hintText: 'Sub-question detail...',
+                isDense: true,
+                contentPadding: EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade100)),
+              ),
             ),
           ),
-          IconButton(icon: Icon(Icons.close, size: 16, color: Colors.grey), onPressed: () => _removeSubQuestion(sectionIndex, itemIndex, subIndex)),
+          IconButton(
+            icon: Icon(Icons.remove_circle_outline, size: 16, color: Colors.grey.shade300),
+            onPressed: () => _removeSubQuestion(sectionIndex, itemIndex, subIndex),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        children: [
+          const SizedBox(height: 60),
+          Icon(Icons.description_outlined, size: 80, color: Colors.grey.shade200),
+          const SizedBox(height: 16),
+          Text("No sections added yet", style: GoogleFonts.outfit(fontSize: 18, color: Colors.grey)),
+          const SizedBox(height: 8),
+          ElevatedButton(onPressed: _addSection, child: Text("Add First Section")),
         ],
       ),
     );
@@ -471,8 +734,4 @@ class ItemController {
       sq.dispose();
     }
   }
-}
-
-extension CardExtension on Card {
-  Widget padding(EdgeInsets padding) => Padding(padding: padding, child: this);
 }

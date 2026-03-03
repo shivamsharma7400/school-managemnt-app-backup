@@ -6,7 +6,7 @@ class AttendanceService extends ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   /// Mark attendance for a specific class and date
-  Future<void> markAttendance(String classId, DateTime date, Map<String, String> attendanceData) async {
+  Future<void> markAttendance(String classId, DateTime date, Map<String, String> attendanceData, {String? userId, String? userName}) async {
     try {
       final dateStr = date.toIso8601String().split('T')[0];
       final recordId = "${classId}_$dateStr";
@@ -15,12 +15,29 @@ class AttendanceService extends ChangeNotifier {
         'classId': classId,
         'date': Timestamp.fromDate(date),
         'records': attendanceData,
+        'markedBy': userId,
+        'markedByName': userName,
+        'updatedAt': FieldValue.serverTimestamp(),
       });
       notifyListeners();
     } catch (e) {
       print('Error marking attendance: $e');
       rethrow;
     }
+  }
+
+  /// Get stream of detailed attendance records for a given date
+  Stream<List<AttendanceRecord>> getMarkedClassDetailsStream(DateTime date) {
+    final dateStart = DateTime(date.year, date.month, date.day);
+    final dateEnd = dateStart.add(const Duration(days: 1));
+
+    return _firestore.collection('attendance')
+        .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(dateStart))
+        .where('date', isLessThan: Timestamp.fromDate(dateEnd))
+        .snapshots()
+        .map((snapshot) {
+          return snapshot.docs.map((doc) => AttendanceRecord.fromJson(doc.data(), doc.id)).toList();
+        });
   }
 
   /// Get attendance record for a class on a specific date
@@ -32,12 +49,7 @@ class AttendanceService extends ChangeNotifier {
       final doc = await _firestore.collection('attendance').doc(recordId).get();
       if (doc.exists) {
         final data = doc.data()!;
-        return AttendanceRecord(
-          id: doc.id,
-          classId: data['classId'],
-          date: (data['date'] as Timestamp).toDate(),
-          attendance: Map<String, String>.from(data['records'] ?? {}),
-        );
+        return AttendanceRecord.fromJson(data, doc.id);
       }
       return null;
     } catch (e) {
@@ -107,10 +119,12 @@ class AttendanceService extends ChangeNotifier {
               continue;
             }
 
-            final records = Map<String, dynamic>.from(data['records'] ?? {});
+            final records = (data['records'] as Map?)?.map<String, String>(
+              (k, v) => MapEntry(k.toString(), v.toString()),
+            ) ?? <String, String>{};
             totalMarked += records.length;
             records.forEach((_, status) {
-              final s = status.toString().toLowerCase();
+              final s = status.toLowerCase();
               if (s == 'p' || s == 'present') present++;
               else if (s == 'a' || s == 'absent') absent++;
             });
@@ -147,10 +161,12 @@ class AttendanceService extends ChangeNotifier {
           continue;
         }
 
-        final records = Map<String, dynamic>.from(data['records'] ?? {});
+        final records = (data['records'] as Map?)?.map<String, String>(
+          (k, v) => MapEntry(k.toString(), v.toString()),
+        ) ?? <String, String>{};
         totalMarked += records.length;
         records.forEach((_, status) {
-          final s = status.toString().toLowerCase();
+          final s = status.toLowerCase();
           if (s == 'p' || s == 'present') present++;
           else if (s == 'a' || s == 'absent') absent++;
         });
@@ -167,7 +183,7 @@ class AttendanceService extends ChangeNotifier {
     }
   }
 
-  /// Get list of all present IDs for a date (Students and Staff)
+  /// Get list of present IDs for a date (Students and Staff)
   Future<List<String>> getPresentIds(DateTime date) async {
     try {
       final dateStart = DateTime(date.year, date.month, date.day);
@@ -180,9 +196,11 @@ class AttendanceService extends ChangeNotifier {
 
       List<String> presentIds = [];
       for (var doc in snapshot.docs) {
-        final records = Map<String, dynamic>.from(doc.data()['records'] ?? {});
+        final records = (doc.data()['records'] as Map?)?.map<String, String>(
+          (k, v) => MapEntry(k.toString(), v.toString()),
+        ) ?? <String, String>{};
         records.forEach((id, status) {
-          final s = status.toString().toLowerCase();
+          final s = status.toLowerCase();
           if (s == 'p' || s == 'present') {
             presentIds.add(id);
           }
@@ -193,5 +211,19 @@ class AttendanceService extends ChangeNotifier {
       print('Error getting present IDs: $e');
       return [];
     }
+  }
+
+  /// Get stream of class IDs that have marked attendance for a given date
+  Stream<List<String>> getMarkedClassIdsStream(DateTime date) {
+    final dateStart = DateTime(date.year, date.month, date.day);
+    final dateEnd = dateStart.add(const Duration(days: 1));
+
+    return _firestore.collection('attendance')
+        .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(dateStart))
+        .where('date', isLessThan: Timestamp.fromDate(dateEnd))
+        .snapshots()
+        .map((snapshot) {
+          return snapshot.docs.map((doc) => doc.data()['classId'] as String).toList();
+        });
   }
 }

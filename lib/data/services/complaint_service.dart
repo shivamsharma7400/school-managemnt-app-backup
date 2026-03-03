@@ -47,6 +47,23 @@ class ComplaintService {
     });
   }
 
+  // Get all processed complaints (History)
+  Stream<List<ComplaintModel>> getProcessedComplaints() {
+    return _complaintsCollection
+        .where('status', isNotEqualTo: 'pending')
+        .snapshots()
+        .map((snapshot) {
+      final complaints = snapshot.docs
+          .map((doc) => ComplaintModel.fromMap(
+              doc.data() as Map<String, dynamic>, doc.id))
+          .toList();
+
+      // Sort in memory
+      complaints.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+      return complaints;
+    });
+  }
+
   // Get pending complaints count for Principal Dashboard
   Stream<int> getPendingComplaintsCount() {
     return _complaintsCollection

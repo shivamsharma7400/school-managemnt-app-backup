@@ -19,7 +19,7 @@ class RoutineManagementScreen extends StatelessWidget {
     }
     
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: Scaffold(
         appBar: AppBar(
           title: Text('Routine Management'),
@@ -27,6 +27,7 @@ class RoutineManagementScreen extends StatelessWidget {
             tabs: [
               Tab(text: 'Class List', icon: Icon(Icons.class_)),
               Tab(text: 'Bus Routes', icon: Icon(Icons.directions_bus)),
+              Tab(text: 'Time Table', icon: Icon(Icons.table_chart)),
             ],
           ),
         ),
@@ -34,11 +35,8 @@ class RoutineManagementScreen extends StatelessWidget {
           children: [
             _RoutineList(type: 'class'),
             _RoutineList(type: 'bus'),
+            _RoutineList(type: 'timetable'),
           ],
-        ),
-        floatingActionButton: FloatingActionButton(
-          child: Icon(Icons.add),
-          onPressed: () => _showAddDialog(context),
         ),
       ),
     );
@@ -64,10 +62,11 @@ class RoutineManagementScreen extends StatelessWidget {
                 items: [
                   DropdownMenuItem(value: 'class', child: Text('Class Routine')),
                   DropdownMenuItem(value: 'bus', child: Text('Bus Routine')),
+                  DropdownMenuItem(value: 'timetable', child: Text('Time Table')),
                 ],
                 onChanged: (val) => setState(() => _selectedType = val!),
               ),
-              if (_selectedType == 'class')
+              if (_selectedType == 'class' || _selectedType == 'timetable')
                 Padding(
                   padding: const EdgeInsets.only(top: 16.0),
                   child: ClassDropdown(
@@ -89,9 +88,9 @@ class RoutineManagementScreen extends StatelessWidget {
             ElevatedButton(
               onPressed: () {
                 String title = "";
-                if (_selectedType == 'class') {
+                if (_selectedType == 'class' || _selectedType == 'timetable') {
                   if (_selectedClass == null) return; // Validate
-                  title = "Class $_selectedClass";
+                  title = "${_selectedType == 'class' ? 'Class' : 'Time Table'} $_selectedClass";
                 } else {
                   title = _titleController.text;
                 }

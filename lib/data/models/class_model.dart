@@ -24,7 +24,7 @@ class ClassModel {
     this.customColumns = const [],
   });
 
-  factory ClassModel.fromMap(Map<String, dynamic> data, String id) {
+  factory ClassModel.fromMap(Map data, String id) {
     return ClassModel(
       id: id,
       name: data['name'] ?? '',
@@ -34,11 +34,10 @@ class ClassModel {
       busFee: (data['busFee'] ?? 0.0).toDouble(),
       hostelFee: (data['hostelFee'] ?? 0.0).toDouble(),
       milkFee: (data['milkFee'] ?? 0.0).toDouble(),
-      otherFees: (data['otherFees'] as Map<String, dynamic>?)?.map(
-            (k, v) => MapEntry(k, (v as num).toDouble()),
-          ) ??
-          {},
-      customColumns: List<String>.from(data['customColumns'] ?? []),
+      otherFees: (data['otherFees'] as Map?)?.map<String, double>(
+            (k, v) => MapEntry(k.toString(), (v as num).toDouble()),
+          ) ?? <String, double>{},
+      customColumns: (data['customColumns'] as List?)?.map((e) => e.toString()).toList() ?? <String>[],
     );
   }
 

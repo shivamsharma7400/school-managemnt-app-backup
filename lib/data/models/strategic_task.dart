@@ -1,4 +1,6 @@
 
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class StrategicTask {
   final String id;
   final String title;
@@ -16,11 +18,21 @@ class StrategicTask {
     this.column = 'To Do',
   });
 
-  factory StrategicTask.fromJson(Map<String, dynamic> json) {
+  factory StrategicTask.fromJson(Map json) {
+    DateTime parsedDate;
+    final dateValue = json['date'];
+    if (dateValue is Timestamp) {
+      parsedDate = dateValue.toDate();
+    } else if (dateValue is String) {
+      parsedDate = DateTime.parse(dateValue);
+    } else {
+      parsedDate = DateTime.now();
+    }
+
     return StrategicTask(
-      id: json['id'],
-      title: json['title'],
-      date: DateTime.parse(json['date']),
+      id: json['id'] ?? '',
+      title: json['title'] ?? '',
+      date: parsedDate,
       isCompleted: json['isCompleted'] ?? false,
       priority: json['priority'] ?? 'Normal',
       column: json['column'] ?? 'To Do',
