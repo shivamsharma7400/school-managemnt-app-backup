@@ -9,6 +9,9 @@ import '../../data/services/school_info_service.dart';
 import '../../core/constants/app_constants.dart';
 import '../../data/models/class_model.dart';
 import '../../data/models/scheduled_exam_model.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:permission_handler/permission_handler.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class ExamQuestionEditorScreen extends StatefulWidget {
   final ScheduledExam exam;
@@ -38,6 +41,11 @@ class _ExamQuestionEditorScreenState extends State<ExamQuestionEditorScreen> {
 
   List<SectionController> _sectionControllers = [];
   int _activeSectionIndex = 0;
+  
+  stt.SpeechToText _speech = stt.SpeechToText();
+  bool _isListening = false;
+  String _lastWords = '';
+  TextEditingController? _activeController;
 
   @override
   void initState() {
@@ -67,6 +75,93 @@ class _ExamQuestionEditorScreenState extends State<ExamQuestionEditorScreen> {
 
     if (p == null) {
       _loadSchoolInfo();
+    }
+    _initSpeech();
+  }
+
+  void _initSpeech() async {
+    try {
+      await _speech.initialize(
+        onStatus: (status) => debugPrint('Speech status: $status'),
+        onError: (errorNotification) => debugPrint('Speech error: $errorNotification'),
+      );
+    } catch (e) {
+      debugPrint('Speech initialization failed: $e');
+    }
+  }
+
+  void _toggleListening(TextEditingController controller) async {
+    if (!_isListening) {
+      if (!kIsWeb) {
+        var status = await Permission.microphone.status;
+        if (status.isDenied) {
+          await Permission.microphone.request();
+        }
+      }
+
+      bool available = await _speech.initialize(
+        onStatus: (status) {
+          debugPrint('Speech status: $status');
+          if (status == 'done' || status == 'notListening') {
+            setState(() {
+              _isListening = false;
+              _activeController = null;
+            });
+          }
+        },
+        onError: (errorNotification) {
+          debugPrint('Speech error: $errorNotification');
+          setState(() {
+            _isListening = false;
+            _activeController = null;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: ${errorNotification.errorMsg}')),
+          );
+        },
+      );
+
+      if (available) {
+        setState(() {
+          _isListening = true;
+          _activeController = controller;
+          _lastWords = ''; // Reset for new recognition
+        });
+        
+        final String originalText = controller.text;
+
+        _speech.listen(
+          onResult: (result) {
+            setState(() {
+              _lastWords = result.recognizedWords;
+              // Update text in real-time
+              if (originalText.isEmpty) {
+                controller.text = _lastWords;
+              } else {
+                controller.text = "$originalText $_lastWords";
+              }
+              
+              if (result.finalResult) {
+                _isListening = false;
+                _activeController = null;
+              }
+            });
+          },
+          localeId: 'hi-IN', // Hindi support
+          cancelOnError: true,
+          listenMode: stt.ListenMode.dictation,
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Speech recognition not available on this device')),
+        );
+      }
+    } else {
+      _speech.stop();
+      setState(() {
+        _isListening = false;
+        _activeController = null;
+      });
     }
   }
 
@@ -503,6 +598,7 @@ class _ExamQuestionEditorScreenState extends State<ExamQuestionEditorScreen> {
                     decoration: InputDecoration(
                       hintText: 'Section Instructions (e.g. Write answers...)',
                       border: InputBorder.none,
+                      suffixIcon: _buildMicButton(sc.title),
                     ),
                   ),
                 ),
@@ -575,6 +671,7 @@ class _ExamQuestionEditorScreenState extends State<ExamQuestionEditorScreen> {
                     filled: true,
                     fillColor: Color(0xFFFCFCFD),
                     contentPadding: EdgeInsets.all(16),
+                    suffixIcon: _buildMicButton(ic.questionText),
                   ),
                 ),
               ),
@@ -644,6 +741,7 @@ class _ExamQuestionEditorScreenState extends State<ExamQuestionEditorScreen> {
                 isDense: true,
                 contentPadding: EdgeInsets.symmetric(vertical: 12, horizontal: 12),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade100)),
+                suffixIcon: _buildMicButton(subController),
               ),
             ),
           ),
@@ -668,6 +766,19 @@ class _ExamQuestionEditorScreenState extends State<ExamQuestionEditorScreen> {
           ElevatedButton(onPressed: _addSection, child: Text("Add First Section")),
         ],
       ),
+    );
+  }
+
+  Widget _buildMicButton(TextEditingController controller) {
+    bool isThisActive = _isListening && _activeController == controller;
+    return IconButton(
+      icon: Icon(
+        isThisActive ? Icons.mic : Icons.mic_none,
+        color: isThisActive ? Colors.blue : Colors.grey.shade400,
+        size: 20,
+      ),
+      onPressed: () => _toggleListening(controller),
+      tooltip: 'Voice Search (Hindi/English)',
     );
   }
 }

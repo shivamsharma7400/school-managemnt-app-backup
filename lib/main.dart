@@ -40,6 +40,8 @@ import 'features/driver/driver_dashboard.dart';
 import 'features/auth/pending_approval_screen.dart';
 import 'features/student/passed_out_dashboard.dart';
 import 'features/common/splash_screen.dart';
+import 'features/staff/staff_dashboard.dart';
+import 'features/admin/developer_dashboard.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -112,7 +114,7 @@ class AuthWrapper extends StatelessWidget {
       return Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    if (authService.user == null) {
+    if (authService.user == null && !authService.isDeveloperLoggedIn) {
       return LoginScreen();
     }
 
@@ -132,6 +134,10 @@ class AuthWrapper extends StatelessWidget {
         return DriverDashboard();
       case 'passed_out':
         return PassedOutDashboard();
+      case 'staff':
+        return StaffDashboard();
+      case 'developer':
+        return DeveloperDashboard();
       case 'pending':
         return PendingApprovalScreen();
       default:

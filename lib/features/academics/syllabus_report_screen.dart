@@ -4,6 +4,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'subject_detail_screen.dart';
 import '../../core/constants/app_constants.dart';
 import '../../data/services/auth_service.dart';
+import '../../data/services/school_config_service.dart';
+import '../../data/services/syllabus_report_pdf_service.dart';
 import 'package:provider/provider.dart';
 
 class SyllabusReportScreen extends StatefulWidget {
@@ -80,14 +82,28 @@ class _SyllabusReportScreenState extends State<SyllabusReportScreen> {
         actions: [
           if (_selectedClassId != null && !widget.isReadOnly)
             Padding(
-              padding: const EdgeInsets.only(right: 16),
+              padding: const EdgeInsets.only(right: 8),
               child: TextButton.icon(
                 onPressed: _showAddSubjectDialog,
                 icon: const Icon(Icons.add, size: 18),
-                label: const Text('Add Subject', style: TextStyle(fontWeight: FontWeight.bold)),
+                label: const Text('Add Subject', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                 style: TextButton.styleFrom(
                   foregroundColor: Colors.indigo,
                   backgroundColor: Colors.indigo[50],
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
+          if (widget.isClassTeacherMode && _selectedClassId != null)
+            Padding(
+              padding: const EdgeInsets.only(right: 16),
+              child: TextButton.icon(
+                onPressed: _showReportConfigDialog,
+                icon: const Icon(Icons.assignment_outlined, size: 18),
+                label: const Text('Report', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.teal,
+                  backgroundColor: Colors.teal[50],
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
               ),
@@ -96,6 +112,134 @@ class _SyllabusReportScreenState extends State<SyllabusReportScreen> {
       ),
       body: _buildBody(),
     );
+  }
+
+  void _showReportConfigDialog() {
+    String selectedTerm = 'First Term';
+    int extraColumnsCount = 0;
+    List<TextEditingController> columnControllers = [];
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              title: Text('Report Your Class', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    DropdownButtonFormField<String>(
+                      value: selectedTerm,
+                      decoration: InputDecoration(
+                        labelText: 'Select Term',
+                        filled: true,
+                        fillColor: Colors.grey[50],
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                      ),
+                      items: ['First Term', 'Second Term', 'Final Term']
+                          .map((term) => DropdownMenuItem(value: term, child: Text(term)))
+                          .toList(),
+                      onChanged: (val) => setDialogState(() => selectedTerm = val!),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      decoration: InputDecoration(
+                        labelText: 'No. of Extra Columns',
+                        filled: true,
+                        fillColor: Colors.grey[50],
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                      ),
+                      keyboardType: TextInputType.number,
+                      onChanged: (val) {
+                        int count = int.tryParse(val) ?? 0;
+                        setDialogState(() {
+                          extraColumnsCount = count;
+                          while (columnControllers.length < count) {
+                            columnControllers.add(TextEditingController());
+                          }
+                        });
+                      },
+                    ),
+                    if (extraColumnsCount > 0) ...[
+                      const SizedBox(height: 16),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text('Extra Column Names:', style: GoogleFonts.outfit(fontWeight: FontWeight.w600, fontSize: 14)),
+                      ),
+                      const SizedBox(height: 8),
+                      ...List.generate(extraColumnsCount, (index) {
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: TextField(
+                            controller: columnControllers[index],
+                            decoration: InputDecoration(
+                              hintText: 'Column ${index + 1} Name',
+                              filled: true,
+                              fillColor: Colors.grey[50],
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                            ),
+                          ),
+                        );
+                      }),
+                    ],
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+                ElevatedButton(
+                  onPressed: () {
+                    List<String> extraColumns = columnControllers.take(extraColumnsCount).map((c) => c.text).toList();
+                    _generateReport(selectedTerm, extraColumns);
+                    Navigator.pop(context);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.teal,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text('Generate'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _generateReport(String term, List<String> extraColumns) async {
+    setState(() => _isLoading = true);
+    try {
+      final syllabuses = await _firestore
+          .collection('syllabuses')
+          .where('classId', isEqualTo: _selectedClassId)
+          .get();
+
+      final List<Map<String, dynamic>> data = syllabuses.docs.map((doc) => doc.data() as Map<String, dynamic>).toList();
+      
+      final schoolName = Provider.of<SchoolConfigService>(context, listen: false).schoolName;
+
+      await SyllabusReportPdfService.generate(
+        schoolName: schoolName,
+        className: _selectedClassName ?? 'N/A',
+        term: term,
+        extraColumns: extraColumns,
+        syllabusData: data,
+      );
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Report Generated Successfully!')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error generating report: $e')),
+      );
+    }
+    setState(() => _isLoading = false);
   }
 
   Widget _buildBody() {

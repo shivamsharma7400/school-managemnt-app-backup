@@ -12,26 +12,28 @@ class AuthService extends ChangeNotifier {
   String? _classId;
   bool _isApproved = false;
   Map<String, dynamic>? _userData;
+  bool _isDeveloperLoggedIn = false;
 
   User? get user => _user;
   String? get role => _role;
   String? get classId => _classId;
   bool get isApproved => _isApproved;
   Map<String, dynamic>? get currentUserData => _userData;
+  bool get isDeveloperLoggedIn => _isDeveloperLoggedIn;
 
   // Helper to get name from Auth or potentially cached firestore data (if we added it).
   // For now, let's rely on Auth. If Auth name is null, we can return "User".
   String get userName => _user?.displayName ?? "User";
   String get currentUserId => _user?.uid ?? "";
 
-  bool get isLoading => _user == null && _auth.currentUser != null && _role == null;
+  bool get isLoading => !_isDeveloperLoggedIn && _user == null && _auth.currentUser != null && _role == null;
 
   AuthService() {
     _auth.authStateChanges().listen((User? user) async {
       _user = user;
-      if (user != null) {
+      if (user != null && !_isDeveloperLoggedIn) {
         await _fetchUserRole(user.uid);
-      } else {
+      } else if (!_isDeveloperLoggedIn) {
         _role = null;
         _classId = null;
         _isApproved = false; // Reset on sign out
@@ -75,8 +77,16 @@ class AuthService extends ChangeNotifier {
   }
 
   Future<String?> signIn(String email, String password) async {
+    if (email == '740@dev.com' && password == 'dev@740') {
+      _isDeveloperLoggedIn = true;
+      _role = 'developer';
+      _userData = {'name': 'Developer', 'role': 'developer'};
+      notifyListeners();
+      return null;
+    }
     try {
       await _auth.signInWithEmailAndPassword(email: email, password: password);
+      _isDeveloperLoggedIn = false;
       return null;
     } on FirebaseAuthException catch (e) {
       return e.message;
@@ -128,6 +138,10 @@ class AuthService extends ChangeNotifier {
 
   Future<void> signOut() async {
     NotificationService().stopListening();
+    _isDeveloperLoggedIn = false;
+    _role = null;
+    _userData = null;
     await _auth.signOut();
+    notifyListeners();
   }
 }

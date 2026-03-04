@@ -31,6 +31,7 @@ import 'package:vps/features/data_center/data_export_screen.dart';
 import 'package:vps/features/fees/budget_calculation_screen.dart';
 import 'package:vps/features/principal/principal_complaint_screen.dart';
 import 'package:vps/features/profile/profile_screen.dart';
+import 'package:vps/features/admin/hr_management_screen.dart';
 
 
 
@@ -202,6 +203,7 @@ class _ModernLayoutState extends State<ModernLayout> {
                   title: 'Administration',
                   items: [
                     _SidebarSubItem(title: 'User Management', onTap: () => _navigateTo(context, UserManagementScreen())),
+                    _SidebarSubItem(title: 'HR Management', onTap: () => _navigateTo(context, HRManagementScreen())),
                     _SidebarSubItem(title: 'Announcement', onTap: () => _navigateTo(context, AnnouncementScreen())),
                     _SidebarSubItem(title: 'Bus Management', onTap: () => _navigateTo(context, BusManagementScreen())),
                     
@@ -278,6 +280,8 @@ class _ModernLayoutState extends State<ModernLayout> {
   }
 
   Widget _buildHeader(BuildContext context, bool isMobile) {
+    final authService = Provider.of<AuthService>(context);
+    
     return Container(
       height: 70,
       padding: EdgeInsets.symmetric(horizontal: 24),
@@ -301,26 +305,63 @@ class _ModernLayoutState extends State<ModernLayout> {
           ),
           Spacer(),
           if (!isMobile) ...[
-            _HeaderIcon(icon: Icons.search),
-            _HeaderIcon(icon: Icons.notifications_none),
-            _HeaderIcon(icon: Icons.person_outline),
-            SizedBox(width: 8),
-          ],
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: AppColors.modernPrimary,
-              borderRadius: BorderRadius.circular(20),
+            _HeaderIcon(
+              icon: Icons.search, 
+              onTap: () => showSearch(
+                context: context, 
+                delegate: _MenuSearchDelegate(context: context, authRole: authService.role ?? ''),
+              ),
             ),
-            child: Row(
-              children: [
-                Text(isMobile ? 'Exams' : 'Scheduled Exams', style: TextStyle(color: Colors.white, fontSize: 12)),
-                SizedBox(width: 8),
-                Icon(Icons.arrow_drop_down, color: Colors.white, size: 16),
-              ],
+            _buildProfileIcon(context, authService),
+            SizedBox(width: 16),
+          ],
+          InkWell(
+            onTap: () => _navigateTo(context, ExamSetupScreen()),
+            borderRadius: BorderRadius.circular(20),
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppColors.modernPrimary,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.modernPrimary.withOpacity(0.3),
+                    blurRadius: 8,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                   Icon(Icons.event_available, color: Colors.white, size: 16),
+                  SizedBox(width: 8),
+                  Text(isMobile ? 'Exams' : 'Scheduled Exams', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+                  SizedBox(width: 4),
+                  Icon(Icons.chevron_right, color: Colors.white, size: 16),
+                ],
+              ),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildProfileIcon(BuildContext context, AuthService authService) {
+    final photoUrl = authService.currentUserData?['photoUrl'];
+    
+    return GestureDetector(
+      onTap: () => _navigateTo(context, ProfileScreen()),
+      child: Padding(
+        padding: const EdgeInsets.only(left: 16),
+        child: CircleAvatar(
+          radius: 18,
+          backgroundColor: AppColors.dashboardBackground,
+          backgroundImage: photoUrl != null && photoUrl.isNotEmpty ? NetworkImage(photoUrl) : null,
+          child: photoUrl == null || photoUrl.isEmpty
+              ? Icon(Icons.person, color: AppColors.modernPrimary, size: 20)
+              : null,
+        ),
       ),
     );
   }
@@ -439,13 +480,215 @@ class _SidebarItem extends StatelessWidget {
 
 class _HeaderIcon extends StatelessWidget {
   final IconData icon;
-  const _HeaderIcon({required this.icon});
+  final VoidCallback? onTap;
+  const _HeaderIcon({required this.icon, this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(left: 16),
-      child: Icon(icon, color: Colors.grey.shade600, size: 24),
+      child: IconButton(
+        icon: Icon(icon, color: Colors.grey.shade600, size: 24),
+        onPressed: onTap,
+        padding: EdgeInsets.zero,
+        constraints: BoxConstraints(),
+        splashRadius: 20,
+      ),
+    );
+  }
+}
+
+class _MenuSearchDelegate extends SearchDelegate {
+  final BuildContext context;
+  final String authRole;
+
+  _MenuSearchDelegate({required this.context, required this.authRole});
+
+  @override
+  ThemeData appBarTheme(BuildContext context) {
+    return Theme.of(context).copyWith(
+      appBarTheme: AppBarTheme(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        iconTheme: IconThemeData(color: Colors.grey.shade600),
+        titleTextStyle: TextStyle(color: Colors.black87, fontSize: 18, fontWeight: FontWeight.bold),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        border: InputBorder.none,
+        hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 16),
+      ),
+    );
+  }
+
+  List<Map<String, dynamic>> _getSearchItems() {
+    final List<Map<String, dynamic>> items = [
+      {'title': 'Dashboard', 'screen': null, 'icon': Icons.dashboard},
+      {'title': 'Attendance', 'screen': MarkAttendanceScreen(), 'icon': Icons.calendar_today},
+      {'title': 'Routines', 'screen': RoutineManagementScreen(), 'icon': Icons.schedule},
+      {'title': 'Exam Setup', 'screen': ExamSetupScreen(), 'icon': Icons.edit_note},
+      {'title': 'Syllabus Report', 'screen': SyllabusReportScreen(), 'icon': Icons.assignment},
+      {'title': 'Student Fee', 'screen': FeeManagementScreen(), 'icon': Icons.payments},
+      {'title': 'Staff Salary', 'screen': StaffSalaryManagementScreen(), 'icon': Icons.money},
+      {'title': 'School Budget', 'screen': BudgetCalculationScreen(), 'icon': Icons.account_balance},
+      {'title': 'Transactions', 'screen': TransactionHistoryScreen(), 'icon': Icons.history},
+      {'title': 'User Management', 'screen': UserManagementScreen(), 'icon': Icons.people},
+      {'title': 'HR Management', 'screen': HRManagementScreen(), 'icon': Icons.assignment_ind},
+      {'title': 'Announcement', 'screen': AnnouncementScreen(), 'icon': Icons.campaign},
+      {'title': 'Bus Management', 'screen': BusManagementScreen(), 'icon': Icons.directions_bus},
+      {'title': 'Strategic Planning', 'screen': StrategicPlanningScreen(), 'icon': Icons.insights},
+      {'title': 'Student Data', 'screen': StudentDataScreen(), 'icon': Icons.person},
+      {'title': 'Teachers Data', 'screen': TeacherDataScreen(), 'icon': Icons.person_search},
+      {'title': 'Staff Data', 'screen': StaffDataScreen(), 'icon': Icons.badge},
+      {'title': 'School Analysis', 'screen': SchoolDataAnalysisScreen(), 'icon': Icons.analytics},
+      {'title': 'Data Export', 'screen': DataExportScreen(), 'icon': Icons.file_download},
+      {'title': 'Settings', 'screen': ProfileScreen(), 'icon': Icons.settings},
+    ];
+
+    if (authRole == 'principal' || authRole == 'admin') {
+      items.addAll([
+        {'title': 'Complaint Box', 'screen': PrincipalComplaintListScreen(), 'icon': Icons.feedback},
+        {'title': 'Leave Requests', 'screen': LeaveApprovalScreen(), 'icon': Icons.event_busy},
+        {'title': 'AI Reports', 'screen': PrincipalAssistantScreen(), 'icon': Icons.auto_awesome},
+        {'title': 'AI Training', 'screen': SchoolInfoScreen(), 'icon': Icons.model_training},
+        {'title': 'Student Queries', 'screen': StudentQueriesScreen(), 'icon': Icons.question_answer},
+      ]);
+    }
+
+    return items;
+  }
+
+  @override
+  List<Widget>? buildActions(BuildContext context) {
+    return [
+      IconButton(
+        icon: Icon(Icons.clear, color: Colors.grey.shade400),
+        onPressed: () => query = '',
+      ),
+    ];
+  }
+
+  @override
+  Widget? buildLeading(BuildContext context) {
+    return IconButton(
+      icon: Icon(Icons.arrow_back_ios_new, size: 20),
+      onPressed: () => close(context, null),
+    );
+  }
+
+  @override
+  Widget buildResults(BuildContext context) {
+    return _buildList();
+  }
+
+  @override
+  Widget buildSuggestions(BuildContext context) {
+    return _buildList();
+  }
+
+  Widget _buildList() {
+    final allItems = _getSearchItems();
+    final results = allItems.where((item) => item['title'].toLowerCase().contains(query.toLowerCase())).toList();
+
+    if (results.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: EdgeInsets.all(32),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.grey.shade100),
+              ),
+              child: Icon(Icons.search_off_rounded, size: 64, color: Colors.grey.shade200),
+            ),
+            SizedBox(height: 24),
+            Text(
+              'No results found for "$query"',
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            SizedBox(height: 12),
+            Text(
+              'Try adjusting your search to find what you need',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey.shade400, fontSize: 14),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      color: Colors.grey.shade50,
+      child: ListView.separated(
+        padding: EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+        itemCount: results.length,
+        separatorBuilder: (context, index) => SizedBox(height: 16),
+        itemBuilder: (context, index) {
+          final item = results[index];
+          return Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.03),
+                  blurRadius: 15,
+                  offset: Offset(0, 5),
+                ),
+              ],
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () {
+                  close(context, null);
+                  if (item['screen'] == null) {
+                    Navigator.of(context).popUntil((route) => route.isFirst);
+                  } else {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => item['screen']));
+                  }
+                },
+                borderRadius: BorderRadius.circular(20),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppColors.modernPrimary.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Icon(item['icon'], color: AppColors.modernPrimary, size: 28),
+                      ),
+                      SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              item['title'],
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              'Click to open ${item['title']}',
+                              style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(Icons.arrow_forward_ios_rounded, color: Colors.grey.shade200, size: 16),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 }

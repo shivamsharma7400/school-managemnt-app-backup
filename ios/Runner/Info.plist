@@ -30,6 +30,10 @@
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>We need microphone access to record your voice for question dictation.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>We need speech recognition to allow you to dictate questions.</string>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>

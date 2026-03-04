@@ -56,7 +56,8 @@ class UserService extends ChangeNotifier {
         data['admNo'] = await _generateNextId('student');
       } else if (newRole == 'teacher' && (userData['teacherId'] == null || userData['teacherId'].toString().isEmpty)) {
         data['teacherId'] = await _generateNextId('teacher');
-      } else if (newRole == 'staff' && (userData['staffId'] == null || userData['staffId'].toString().isEmpty)) {
+      } else if ((newRole == 'staff' || newRole == 'driver' || newRole == 'management') && 
+                 (userData['staffId'] == null || userData['staffId'].toString().isEmpty)) {
         data['staffId'] = await _generateNextId('staff');
       }
     }
@@ -108,6 +109,12 @@ class UserService extends ChangeNotifier {
   Future<void> updateProfile(String userId, Map<String, dynamic> data) async {
     await _firestore.collection('users').doc(userId).update(data);
     notifyListeners();
+  }
+
+  Future<void> updateUserPermission(String userId, String permissionKey, bool value) async {
+    await _firestore.collection('users').doc(userId).update({
+      'permissions.$permissionKey': value,
+    });
   }
 
   Future<Map<String, dynamic>?> getUserData(String uid) async {

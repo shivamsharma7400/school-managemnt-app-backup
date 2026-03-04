@@ -166,6 +166,63 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() => _isLoading = false);
   }
 
+  void _showPhotoUpdateDialog() {
+    final TextEditingController _linkController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Update Profile Photo', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Paste Google Drive Image Link:', style: GoogleFonts.poppins(fontSize: 14)),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _linkController,
+              decoration: InputDecoration(
+                hintText: 'https://drive.google.com/...',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Make sure the link is set to "Anyone with the link can view"',
+              style: GoogleFonts.poppins(fontSize: 11, color: Colors.orange[800], fontWeight: FontWeight.w500),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('CANCEL', style: GoogleFonts.poppins(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              String rawUrl = _linkController.text.trim();
+              if (rawUrl.isNotEmpty) {
+                Navigator.pop(context);
+                setState(() => _isLoading = true);
+                
+                final user = Provider.of<AuthService>(context, listen: false).user;
+                if (user != null) {
+                  await Provider.of<UserService>(context, listen: false).updateProfile(
+                    user.uid, 
+                    {'photoUrl': rawUrl} // We save raw, getDirectDriveUrl handles it in fetch
+                  );
+                  _fetchUserData(); // Refresh
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.blueAccent),
+            child: Text('UPDATE', style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -499,25 +556,49 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 children: [
                   Hero(
                     tag: 'profile_pic',
-                    child: Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white.withOpacity(0.5), width: 4),
-                        boxShadow: [
-                          BoxShadow(color: Colors.black26, blurRadius: 20, offset: Offset(0, 10)),
-                        ],
-                      ),
-                      child: CircleAvatar(
-                        radius: 55,
-                        backgroundColor: Colors.white,
-                        backgroundImage: _photoUrl != null ? NetworkImage(_photoUrl!) : null,
-                        child: _photoUrl == null
-                            ? Text(
-                                _nameController.text.isNotEmpty ? _nameController.text[0].toUpperCase() : '?',
-                                style: GoogleFonts.poppins(fontSize: 45, color: Colors.blue[900], fontWeight: FontWeight.bold),
-                              )
-                            : null,
-                      ),
+                    child: Stack(
+                      children: [
+                        Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white.withOpacity(0.5), width: 4),
+                            boxShadow: [
+                              BoxShadow(color: Colors.black26, blurRadius: 20, offset: Offset(0, 10)),
+                            ],
+                          ),
+                          child: CircleAvatar(
+                            radius: 55,
+                            backgroundColor: Colors.white,
+                            backgroundImage: _photoUrl != null ? NetworkImage(_photoUrl!) : null,
+                            child: _photoUrl == null
+                                ? Text(
+                                    _nameController.text.isNotEmpty ? _nameController.text[0].toUpperCase() : '?',
+                                    style: GoogleFonts.poppins(fontSize: 45, color: Colors.blue[900], fontWeight: FontWeight.bold),
+                                  )
+                                : null,
+                          ),
+                        ),
+                        if (['admin', 'principal', 'management'].contains(_role))
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: InkWell(
+                              onTap: _showPhotoUpdateDialog,
+                              child: Container(
+                                padding: EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.blueAccent,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: Colors.white, width: 2),
+                                  boxShadow: [
+                                    BoxShadow(color: Colors.black26, blurRadius: 10),
+                                  ],
+                                ),
+                                child: Icon(Icons.camera_alt, color: Colors.white, size: 20),
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 16),

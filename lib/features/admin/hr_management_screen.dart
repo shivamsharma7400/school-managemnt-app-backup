@@ -5,6 +5,9 @@ import '../attendance/mark_attendance_screen.dart';
 import '../fees/staff_salary_management_screen.dart';
 import '../principal/leave/leave_approval_screen.dart';
 import '../data_center/staff_data_screen.dart';
+import 'package:provider/provider.dart';
+import '../../data/services/user_service.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class HRManagementScreen extends StatelessWidget {
   @override
@@ -25,9 +28,9 @@ class HRManagementScreen extends StatelessWidget {
                 SizedBox(height: 16),
                 _buildModulesGrid(context, constraints),
                 SizedBox(height: 32),
-                _buildSectionTitle('Staff Directory & Data'),
+                _buildSectionTitle('Staff Permissions Management'),
                 SizedBox(height: 16),
-                _buildDirectorySection(context),
+                _buildPermissionTable(context),
               ],
             ),
           );
@@ -161,66 +164,131 @@ class HRManagementScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildDirectorySection(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: _buildDirectoryCard(
-            context,
-            'Teacher Directory',
-            'View and manage all faculty members',
-            Icons.school,
-            Colors.teal,
-            () => Navigator.push(context, MaterialPageRoute(builder: (_) => UserManagementScreen())),
-          ),
-        ),
-        SizedBox(width: 16),
-        Expanded(
-          child: _buildDirectoryCard(
-            context,
-            'Staff Data',
-            'Detailed records of non-teaching staff',
-            Icons.assignment_ind,
-            Colors.brown,
-            () => Navigator.push(context, MaterialPageRoute(builder: (_) => StaffDataScreen())),
-          ),
-        ),
-      ],
-    );
-  }
+  Widget _buildPermissionTable(BuildContext context) {
+    final userService = Provider.of<UserService>(context, listen: false);
+    final permissions = [
+      {'key': 'user_approval', 'label': 'User Approval'},
+      {'key': 'exam_setup', 'label': 'Exam Setup'},
+      {'key': 'ai_training', 'label': 'AI Training'},
+      {'key': 'ai_reports', 'label': 'AI Reports'},
+      {'key': 'student_fee', 'label': 'Student Fee'},
+      {'key': 'staff_salary', 'label': 'Staff Salary'},
+      {'key': 'data_center', 'label': 'Data Center'},
+      {'key': 'syllabus', 'label': 'Syllabus'},
+      {'key': 'complaint_box', 'label': 'Complaint Box'},
+      {'key': 'leave_request', 'label': 'Leave Request Accept'},
+      {'key': 'attendance', 'label': 'Attendance'},
+    ];
 
-  Widget _buildDirectoryCard(BuildContext context, String title, String subtitle, IconData icon, Color color, VoidCallback onTap) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Row(
-            children: [
-              Icon(icon, color: color, size: 40),
-              SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                    Text(
-                      subtitle,
-                      style: TextStyle(color: Colors.grey, fontSize: 11),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: userService.getAllUsers(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Center(child: CircularProgressIndicator());
+        }
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return Center(child: Text('No management/staff users found'));
+        }
+
+        final managementUsers = snapshot.data!.where((u) {
+          final role = u['role']?.toString().toLowerCase();
+          return role != 'student' && 
+                 role != 'teacher' && 
+                 role != 'pending' && 
+                 role != 'passed_out' &&
+                 role != 'principal' &&
+                 role != 'admin';
+        }).toList();
+
+        if (managementUsers.isEmpty) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 32.0),
+              child: Text('No management/staff users found', style: TextStyle(color: Colors.grey)),
+            ),
+          );
+        }
+
+        return Container(
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.grey.shade200),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.03),
+                blurRadius: 10,
+                offset: Offset(0, 4),
               ),
-              Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
             ],
           ),
-        ),
-      ),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: DataTable(
+              columnSpacing: 24,
+              horizontalMargin: 20,
+              headingRowHeight: 56,
+              dataRowHeight: 60,
+              headingRowColor: MaterialStateProperty.all(Colors.indigo.shade50),
+              showCheckboxColumn: false,
+              columns: [
+                DataColumn(
+                  label: Container(
+                    width: 150,
+                    child: Text('NAME', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: Colors.indigo.shade900, letterSpacing: 0.5)),
+                  ),
+                ),
+                ...permissions.map((p) => DataColumn(
+                      label: Text(
+                        p['label']!.toUpperCase(),
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 11, color: Colors.indigo.shade900, letterSpacing: 0.5),
+                      ),
+                    )),
+              ],
+              rows: managementUsers.asMap().entries.map((entry) {
+                final index = entry.key;
+                final user = entry.value;
+                final userPermissions = user['permissions'] as Map<String, dynamic>? ?? {};
+                final isEven = index % 2 == 0;
+                
+                return DataRow(
+                  color: MaterialStateProperty.all(isEven ? Colors.white : Colors.grey.shade50),
+                  cells: [
+                    DataCell(
+                      Container(
+                        width: 150,
+                        child: Text(
+                          user['name'] ?? 'Unknown',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.grey.shade800),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                    ...permissions.map((p) => DataCell(
+                          Center(
+                            child: Transform.scale(
+                              scale: 0.9,
+                              child: Checkbox(
+                                value: userPermissions[p['key']] == true,
+                                activeColor: Colors.indigo.shade600,
+                                checkColor: Colors.white,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                                onChanged: (val) {
+                                  userService.updateUserPermission(user['id'], p['key']!, val ?? false);
+                                },
+                              ),
+                            ),
+                          ),
+                        )),
+                  ],
+                );
+              }).toList(),
+            ),
+          ),
+        );
+      },
     );
   }
 }

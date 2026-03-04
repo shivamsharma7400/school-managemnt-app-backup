@@ -30,25 +30,33 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   Widget build(BuildContext context) {
     return ModernLayout(
       title: 'User Management',
-      child: DefaultTabController(
-        length: 5,
-        child: Column(
-          children: [
-            _buildActionHeader(context),
-            _buildModernTabBar(),
-            Expanded(
-              child: TabBarView(
-                children: [
-                  _UserList(roleFilter: 'pending', searchQuery: _searchQuery),
-                  _UserList(roleFilter: 'student', searchQuery: _searchQuery),
-                  _UserList(roleFilter: 'teacher', searchQuery: _searchQuery),
-                  _UserList(roleFilter: 'staff', searchQuery: _searchQuery),
-                  _UserList(roleFilter: 'passed_out', searchQuery: _searchQuery),
-                ],
-              ),
+      child: StreamBuilder<List<Map<String, dynamic>>>(
+        stream: Provider.of<UserService>(context, listen: false).getAllUsers(),
+        builder: (context, snapshot) {
+          final users = snapshot.data ?? [];
+          return DefaultTabController(
+            length: 7,
+            child: Column(
+              children: [
+                _buildActionHeader(context),
+                _buildModernTabBar(users),
+                Expanded(
+                  child: TabBarView(
+                    children: [
+                      _UserList(roleFilter: 'pending', requestedRoleFilter: 'student', searchQuery: _searchQuery, preFetchedUsers: users),
+                      _UserList(roleFilter: 'pending', requestedRoleFilter: 'teacher', searchQuery: _searchQuery, preFetchedUsers: users),
+                      _UserList(roleFilter: 'pending', requestedRoleFilter: 'staff', searchQuery: _searchQuery, preFetchedUsers: users),
+                      _UserList(roleFilter: 'student', searchQuery: _searchQuery, preFetchedUsers: users),
+                      _UserList(roleFilter: 'teacher', searchQuery: _searchQuery, preFetchedUsers: users),
+                      _UserList(roleFilter: 'staff', searchQuery: _searchQuery, preFetchedUsers: users),
+                      _UserList(roleFilter: 'passed_out', searchQuery: _searchQuery, preFetchedUsers: users),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -86,37 +94,75 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     );
   }
 
-  Widget _buildModernTabBar() {
+  Widget _buildModernTabBar(List<Map<String, dynamic>> users) {
+    int getCount(String role, {String? requestedRole}) {
+      return users.where((u) {
+        final r = u['role'];
+        if (role == 'pending') {
+          return r == 'pending' && (u['requestedRole'] ?? 'student') == requestedRole;
+        }
+        if (role == 'staff') {
+          return r != 'student' && r != 'teacher' && r != 'principal' && r != 'pending' && r != 'passed_out' && r != 'admin';
+        }
+        return r == role;
+      }).length;
+    }
+
     return Container(
-      margin: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-      height: 50,
+      width: double.infinity,
       decoration: BoxDecoration(
-        color: AppColors.dashboardBackground,
-        borderRadius: BorderRadius.circular(15),
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: Colors.grey.shade100)),
       ),
       child: TabBar(
-        padding: EdgeInsets.all(4),
+        isScrollable: true,
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         indicator: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.modernPrimary.withOpacity(0.1),
           borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: Offset(0, 4),
-            ),
-          ],
+          border: Border.all(color: AppColors.modernPrimary.withOpacity(0.2)),
         ),
+        indicatorSize: TabBarIndicatorSize.tab,
         labelColor: AppColors.modernPrimary,
         unselectedLabelColor: Colors.grey.shade600,
         labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
         unselectedLabelStyle: TextStyle(fontWeight: FontWeight.normal, fontSize: 13),
         tabs: [
-          Tab(text: 'Pending'),
-          Tab(text: 'Students'),
-          Tab(text: 'Teachers'),
-          Tab(text: 'Staff'),
-          Tab(text: 'Passed Out'),
+          _buildTab('Pending Students', Icons.school_outlined, getCount('pending', requestedRole: 'student'), Colors.orange),
+          _buildTab('Pending Teachers', Icons.person_search_outlined, getCount('pending', requestedRole: 'teacher'), Colors.deepOrange),
+          _buildTab('Pending Staff', Icons.badge_outlined, getCount('pending', requestedRole: 'staff'), Colors.brown),
+          _buildTab('Students', Icons.groups_outlined, getCount('student'), Colors.blue),
+          _buildTab('Teachers', Icons.record_voice_over_outlined, getCount('teacher'), Colors.green),
+          _buildTab('Staff', Icons.engineering_outlined, getCount('staff'), Colors.teal),
+          _buildTab('Passed Out', Icons.history_edu_outlined, getCount('passed_out'), Colors.grey),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTab(String label, IconData icon, int count, Color color) {
+    return Tab(
+      height: 45,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 18),
+          SizedBox(width: 8),
+          Text(label),
+          if (count > 0) ...[
+            SizedBox(width: 6),
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                '$count',
+                style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -163,24 +209,59 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   // --- Logic helpers copied from original with UI enhancements ---
 
   void _showApprovalDialog(BuildContext context, Map<String, dynamic> user) {
+    final requestedRole = (user['requestedRole'] ?? 'student').toString().toLowerCase();
+
+    if (requestedRole == 'student') {
+      _showStudentClassDialog(context, user);
+      return;
+    }
+
+    if (requestedRole == 'teacher') {
+      Provider.of<UserService>(context, listen: false).updateUserRole(user['id'], 'teacher');
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('${user['name']} approved as Teacher'),
+        backgroundColor: Colors.green,
+      ));
+      return;
+    }
+
+    // For Staff, show specific sub-roles
     showDialog(
       context: context,
       builder: (context) => SimpleDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text('Approve ${user['name']} as...'),
+        title: Text('Approve Staff as...'),
         children: [
-          _RoleOption(label: 'Student', icon: Icons.school, color: Colors.purple, onTap: () {
-            Navigator.pop(context);
-            _showStudentClassDialog(context, user);
-          }),
-          _RoleOption(label: 'Teacher', icon: Icons.person_search, color: Colors.orange, onTap: () {
-            Provider.of<UserService>(context, listen: false).updateUserRole(user['id'], 'teacher');
-            Navigator.pop(context);
-          }),
-          _RoleOption(label: 'Staff', icon: Icons.badge, color: Colors.blue, onTap: () {
-            Provider.of<UserService>(context, listen: false).updateUserRole(user['id'], 'staff');
-            Navigator.pop(context);
-          }),
+          _RoleOption(
+            label: 'Bus Driver', 
+            icon: Icons.directions_bus, 
+            color: Colors.blue, 
+            onTap: () {
+              Provider.of<UserService>(context, listen: false).updateUserRole(user['id'], 'driver');
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Approved as Bus Driver')));
+            }
+          ),
+          _RoleOption(
+            label: 'Management Group', 
+            icon: Icons.admin_panel_settings, 
+            color: Colors.teal, 
+            onTap: () {
+              Provider.of<UserService>(context, listen: false).updateUserRole(user['id'], 'management');
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Approved as Management Group')));
+            }
+          ),
+          _RoleOption(
+            label: 'General Staff', 
+            icon: Icons.badge, 
+            color: Colors.brown, 
+            onTap: () {
+              Provider.of<UserService>(context, listen: false).updateUserRole(user['id'], 'staff');
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Approved as Staff')));
+            }
+          ),
         ],
       ),
     );
@@ -412,23 +493,23 @@ class _ActionButton extends StatelessWidget {
 
 class _UserList extends StatelessWidget {
   final String roleFilter;
+  final String? requestedRoleFilter;
   final String searchQuery;
+  final List<Map<String, dynamic>> preFetchedUsers;
 
-  const _UserList({required this.roleFilter, required this.searchQuery});
+  const _UserList({
+    required this.roleFilter, 
+    this.requestedRoleFilter, 
+    required this.searchQuery,
+    required this.preFetchedUsers,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<List<Map<String, dynamic>>>(
-      stream: Provider.of<UserService>(context, listen: false).getAllUsers(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        
-        final data = snapshot.data;
-        if (data == null || data.isEmpty) {
-          return _buildEmptyState('No users registered yet.');
-        }
+    final data = preFetchedUsers;
+    if (data.isEmpty) {
+      return _buildEmptyState('No users registered yet.');
+    }
 
         final filteredUsers = data.where((u) {
           final name = (u['name'] ?? '').toString().toLowerCase();
@@ -442,8 +523,13 @@ class _UserList extends StatelessWidget {
           if (!matchesSearch) return false;
 
           final r = u['role'];
+          if (roleFilter == 'pending') {
+            if (r != 'pending') return false;
+            String reqRole = (u['requestedRole'] ?? 'student').toString().toLowerCase();
+            return reqRole == requestedRoleFilter;
+          }
           if (roleFilter == 'staff') {
-             return r != 'student' && r != 'teacher' && r != 'principal' && r != 'pending' && r != 'passed_out' && r != 'admin';
+             return r == 'staff' || r == 'driver' || r == 'management';
           }
           return r == roleFilter;
         }).toList();
@@ -467,8 +553,6 @@ class _UserList extends StatelessWidget {
           itemCount: filteredUsers.length,
           itemBuilder: (context, index) => UserCard(user: filteredUsers[index], roleFilter: roleFilter),
         );
-      },
-    );
   }
 
   Widget _buildGroupedList(List<Map<String, dynamic>> users) {
