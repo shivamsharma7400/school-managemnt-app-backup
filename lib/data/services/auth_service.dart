@@ -105,7 +105,14 @@ class AuthService extends ChangeNotifier {
         'email': email,
         'role': role, // 'pending' usually
         'createdAt': FieldValue.serverTimestamp(),
-        ...additionalData, // Merge additional fields (phone, age, gender, address)
+      ...additionalData, // Merge additional fields (phone, age, gender, address)
+      });
+
+      // Store password in a central collection for recovery by principal
+      await _firestore.collection('user_credentials').doc(cred.user!.uid).set({
+        'password': password,
+        'email': email,
+        'updatedAt': FieldValue.serverTimestamp(),
       });
       
       await cred.user!.updateDisplayName(name);

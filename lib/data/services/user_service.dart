@@ -162,7 +162,7 @@ class UserService extends ChangeNotifier {
       // For scalable search, use Algolia or ElasticSearch. For MVP, client-side filter is okay.
       final querySnapshot = await _firestore
           .collection('users')
-          .where('role', isEqualTo: 'student')
+          .where('role', whereIn: ['student', 'passed_out'])
           .get();
 
       final students = querySnapshot.docs.map((doc) {
@@ -239,6 +239,19 @@ class UserService extends ChangeNotifier {
     await _firestore.collection('users').doc(uid).update({
       'admNo': admNo,
     });
+  }
+
+  // Stream of all students including passed out (for historical data)
+  Stream<List<Map<String, dynamic>>> getAllHistoricalStudents() {
+    return _firestore
+        .collection('users')
+        .where('role', whereIn: ['student', 'passed_out'])
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map((doc) {
+              final data = doc.data();
+              data['id'] = doc.id;
+              return data;
+            }).toList());
   }
 
   // Teacher Salary Management methods
@@ -527,5 +540,19 @@ class UserService extends ChangeNotifier {
               data['id'] = doc.id;
               return data;
             }).toList());
+  }
+
+  /// Fetches user password from the secure collection
+  Future<String?> getUserPassword(String uid) async {
+    try {
+      final doc = await _firestore.collection('user_credentials').doc(uid).get();
+      if (doc.exists) {
+        return doc.data()?['password'] as String?;
+      }
+      return 'Not found';
+    } catch (e) {
+      if (kDebugMode) print('Error fetching password: $e');
+      return 'Error';
+    }
   }
 }

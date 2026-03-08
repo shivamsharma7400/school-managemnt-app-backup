@@ -21,7 +21,7 @@ class _StudentDataScreenState extends State<StudentDataScreen> {
         foregroundColor: Colors.white,
       ),
       body: StreamBuilder<List<Map<String, dynamic>>>(
-        stream: userService.getAllStudents(),
+        stream: userService.getAllHistoricalStudents(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -185,8 +185,10 @@ class _ResponsiveDataViewState extends State<_ResponsiveDataView> {
               DataColumn(label: Text('Bank Name', style: TextStyle(fontWeight: FontWeight.bold))),
               DataColumn(label: Text('Account No', style: TextStyle(fontWeight: FontWeight.bold))),
               DataColumn(label: Text('IFSC', style: TextStyle(fontWeight: FontWeight.bold))),
+              DataColumn(label: Text('Status', style: TextStyle(fontWeight: FontWeight.bold))),
             ],
             rows: students.map((student) {
+              final isPassedOut = student['role'] == 'passed_out';
               return DataRow(
                 cells: [
                   DataCell(
@@ -213,6 +215,24 @@ class _ResponsiveDataViewState extends State<_ResponsiveDataView> {
                   DataCell(Text(student['bankName'] ?? 'N/A')),
                   DataCell(Text(student['bankAccountNo'] ?? 'N/A')),
                   DataCell(Text(student['ifscCode'] ?? 'N/A')),
+                  DataCell(
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: isPassedOut ? Colors.grey[100] : Colors.green[50],
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: isPassedOut ? Colors.grey[300]! : Colors.green[200]!),
+                      ),
+                      child: Text(
+                        isPassedOut ? 'Passed Out' : 'Active',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: isPassedOut ? Colors.grey[600] : Colors.green[700],
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               );
             }).toList(),
@@ -236,7 +256,22 @@ class _ResponsiveDataViewState extends State<_ResponsiveDataView> {
               backgroundColor: Colors.indigo[50],
               child: Text(student['name']?[0] ?? 'S', style: const TextStyle(color: Colors.indigo, fontWeight: FontWeight.bold)),
             ),
-            title: Text(student['name'] ?? 'Unknown', style: const TextStyle(fontWeight: FontWeight.bold)),
+            title: Row(
+              children: [
+                Expanded(child: Text(student['name'] ?? 'Unknown', style: const TextStyle(fontWeight: FontWeight.bold))),
+                if (student['role'] == 'passed_out')
+                  Container(
+                    margin: const EdgeInsets.only(left: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey[300]!),
+                    ),
+                    child: const Text('Passed Out', style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold)),
+                  ),
+              ],
+            ),
             subtitle: Text('ID: ${student['admNo'] ?? 'N/A'} • Class: ${student['classId'] ?? 'N/A'}', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
             children: [
               Padding(
@@ -254,6 +289,7 @@ class _ResponsiveDataViewState extends State<_ResponsiveDataView> {
                     _detailRow('Bank Name', student['bankName'] ?? 'N/A'),
                     _detailRow('Account No', student['bankAccountNo'] ?? 'N/A'),
                     _detailRow('IFSC', student['ifscCode'] ?? 'N/A'),
+                    _detailRow('Status', student['role'] == 'passed_out' ? 'Passed Out' : 'Active', color: student['role'] == 'passed_out' ? Colors.grey : Colors.green),
                   ],
                 ),
               ),
@@ -264,7 +300,7 @@ class _ResponsiveDataViewState extends State<_ResponsiveDataView> {
     );
   }
 
-  Widget _detailRow(String label, String value, {bool isBlue = false, VoidCallback? onEdit}) {
+  Widget _detailRow(String label, String value, {bool isBlue = false, VoidCallback? onEdit, Color? color}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
@@ -283,7 +319,7 @@ class _ResponsiveDataViewState extends State<_ResponsiveDataView> {
                       value,
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: isBlue ? Colors.blue : Colors.black87,
+                        color: color ?? (isBlue ? Colors.blue : Colors.black87),
                       ),
                       textAlign: TextAlign.end,
                     ),

@@ -420,6 +420,78 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     }
   }
 
+  void _showPasswordDialog(BuildContext context, Map<String, dynamic> user) async {
+    final userService = Provider.of<UserService>(context, listen: false);
+    
+    showDialog(
+      context: context,
+      builder: (context) => FutureBuilder<String?>(
+        future: userService.getUserPassword(user['id']),
+        builder: (context, snapshot) {
+          final password = snapshot.data ?? 'Loading...';
+          final isLoading = snapshot.connectionState == ConnectionState.waiting;
+
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Row(
+              children: [
+                Icon(Icons.key, color: Colors.orange),
+                SizedBox(width: 12),
+                Text('User Password'),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('User: ${user['name']}', style: TextStyle(fontWeight: FontWeight.bold)),
+                SizedBox(height: 16),
+                Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: isLoading 
+                    ? Center(child: CircularProgressIndicator(strokeWidth: 2))
+                    : Row(
+                        children: [
+                          Icon(Icons.lock_open, size: 16, color: Colors.grey),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: SelectableText(
+                              password,
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1.2,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                ),
+                SizedBox(height: 12),
+                Text(
+                  'Please share this password with the user only after identity verification.',
+                  style: TextStyle(fontSize: 11, color: Colors.grey, fontStyle: FontStyle.italic),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text('Close'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
   static Widget _buildSectionHeaderStatic(String title, int count) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16.0),
@@ -686,6 +758,16 @@ class UserCard extends StatelessWidget {
                       if (state != null) state._showPhotoUpdateOptions(context, user['id']);
                     },
                     tooltip: 'Update Photo',
+                  ),
+                  const SizedBox(width: 8),
+                  _CircleToolButton(
+                    icon: Icons.key_outlined,
+                    color: Colors.orange,
+                    onTap: () {
+                      final state = context.findAncestorStateOfType<_UserManagementScreenState>();
+                      if (state != null) state._showPasswordDialog(context, user);
+                    },
+                    tooltip: 'View Password',
                   ),
                   const SizedBox(width: 8),
                   if (roleFilter == 'pending') ...[

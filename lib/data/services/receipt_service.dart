@@ -179,7 +179,7 @@ class ReceiptService {
         build: (pw.Context context) {
           return pw.Container(
             decoration: pw.BoxDecoration(
-              border: pw.Border.all(color: PdfColors.indigo900, width: 1),
+              border: pw.Border.all(color: primaryColor, width: 0.5),
             ),
             padding: const pw.EdgeInsets.all(24),
             child: pw.Column(
@@ -210,16 +210,16 @@ class ReceiptService {
                   ),
                 ),
                 pw.SizedBox(height: 12),
-                pw.Divider(color: primaryColor, thickness: 1.5),
+                pw.Divider(color: primaryColor, thickness: 0.5),
                 pw.SizedBox(height: 8),
                 pw.Center(
                   child: pw.Container(
                     decoration: pw.BoxDecoration(
-                      color: primaryColor,
+                      border: pw.Border.all(color: primaryColor, width: 0.8),
                       borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
                     ),
                     padding: const pw.EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-                    child: pw.Text('OFFICIAL FEE RECEIPT', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: PdfColors.white)),
+                    child: pw.Text('OFFICIAL FEE RECEIPT', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: primaryColor)),
                   ),
                 ),
                 pw.SizedBox(height: 24),
@@ -263,20 +263,22 @@ class ReceiptService {
                   children: [
                     // Table Header
                     pw.TableRow(
-                      decoration: pw.BoxDecoration(color: primaryColor),
+                      decoration: pw.BoxDecoration(
+                        border: pw.Border(bottom: pw.BorderSide(color: primaryColor, width: 1.5))
+                      ),
                       verticalAlignment: pw.TableCellVerticalAlignment.middle,
                       children: [
                         pw.Padding(
                           padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 10), 
-                          child: pw.Text('Charges Info', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white, fontSize: 11))
+                          child: pw.Text('Charges Info', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: primaryColor, fontSize: 11))
                         ),
                         pw.Padding(
                           padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 10), 
-                          child: pw.Text('Charge', textAlign: pw.TextAlign.right, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white, fontSize: 11))
+                          child: pw.Text('Charge', textAlign: pw.TextAlign.right, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: primaryColor, fontSize: 11))
                         ),
                         pw.Padding(
                           padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 10), 
-                          child: pw.Text('Amount', textAlign: pw.TextAlign.right, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white, fontSize: 11))
+                          child: pw.Text('Amount', textAlign: pw.TextAlign.right, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: primaryColor, fontSize: 11))
                         ),
                       ],
                     ),
@@ -295,14 +297,14 @@ class ReceiptService {
                         width: 250,
                         padding: const pw.EdgeInsets.all(12),
                         decoration: pw.BoxDecoration(
-                          color: PdfColors.grey50,
+                          border: pw.Border.all(color: PdfColors.grey200, width: 0.5),
                           borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
                         ),
                         child: pw.Column(
                           children: [
                             _buildModernSummaryRow('Total Owed', '₹${totalPayablePrior.toStringAsFixed(2)}', isBold: true),
                             _buildModernSummaryRow('Amount Paid', '₹${amountPaid.toStringAsFixed(2)}', isBold: true, color: PdfColors.green800),
-                            pw.Divider(color: PdfColors.grey300),
+                            pw.Divider(color: PdfColors.grey300, thickness: 0.5),
                             _buildModernSummaryRow(
                               currentDueAfterPayment > 0 ? 'Status: DUE' : 'Status: PAID', 
                               '₹${currentDueAfterPayment.toStringAsFixed(2)}', 
