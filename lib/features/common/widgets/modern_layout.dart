@@ -194,6 +194,7 @@ class _ModernLayoutState extends State<ModernLayout> {
                     _SidebarSubItem(title: 'Student Fee', onTap: () => _navigateTo(context, FeeManagementScreen())),
                     _SidebarSubItem(title: 'Staff Salary', onTap: () => _navigateTo(context, StaffSalaryManagementScreen())),
                     _SidebarSubItem(title: 'Transactions', onTap: () => _navigateTo(context, TransactionHistoryScreen())),
+                    _SidebarSubItem(title: 'School Budget', onTap: () => _navigateTo(context, BudgetCalculationScreen())),
                   ],
                 ),
 
@@ -207,7 +208,6 @@ class _ModernLayoutState extends State<ModernLayout> {
                     _SidebarSubItem(title: 'Bus Management', onTap: () => _navigateTo(context, BusManagementScreen())),
                     
                     _SidebarSubItem(title: 'Strategic Planning', onTap: () => _navigateTo(context, StrategicPlanningScreen())),
-                    _SidebarSubItem(title: 'School Budget', onTap: () => _navigateTo(context, BudgetCalculationScreen())),
                   ],
                 ),
 
