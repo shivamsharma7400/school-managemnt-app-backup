@@ -27,6 +27,7 @@ import 'data/services/student_query_service.dart';
 import 'data/services/strategic_planning_service.dart';
 
 import 'data/services/bus_service.dart';
+import 'data/services/bus_routine_service.dart';
 import 'data/services/school_config_service.dart';
 import 'data/services/complaint_service.dart';
 import 'features/auth/login_screen.dart';
@@ -84,6 +85,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ThemeService()), // Add ThemeService
         Provider(create: (_) => ComplaintService()),
         ChangeNotifierProvider(create: (_) => StrategicPlanningService()),
+        ChangeNotifierProvider(create: (_) => BusRoutineService()),
       ],
       child: Consumer2<ThemeService, AuthService>(
         builder: (context, themeService, authService, child) {

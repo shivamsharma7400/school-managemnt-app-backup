@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../data/services/user_service.dart';
-
 import '../../data/services/class_service.dart';
 
 class StudentSearchScreen extends StatefulWidget {
@@ -46,60 +45,107 @@ class _StudentSearchScreenState extends State<StudentSearchScreen> {
 
   String _getClassName(String? classId) {
     if (classId == null) return 'Not Assigned';
-    return _classNames[classId] ?? 'Unknown Class'; // Fallback to ID if not found? No, looks bad. 'Unknown Class' is better or just 'Class'
+    return _classNames[classId] ?? 'Unknown Class';
   }
 
   void _showStudentDetails(Map<String, dynamic> student) {
+    // Standardize phone field access
+    final String? phoneNumber = student['phone'] ?? student['mobileNumber'];
+
     showModalBottomSheet(
       context: context,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      backgroundColor: Colors.transparent,
       builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.all(20.0),
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          padding: const EdgeInsets.all(24.0),
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(student['name'] ?? 'Unknown Name', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-              SizedBox(height: 10),
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
               Row(
                 children: [
-                  Icon(Icons.class_, color: Colors.grey),
-                  SizedBox(width: 8),
-                  Text("Class: ${_getClassName(student['classId'])}", style: TextStyle(fontSize: 16)),
+                   CircleAvatar(
+                     radius: 30,
+                     backgroundColor: Colors.blue.withOpacity(0.1),
+                     child: const Icon(Icons.person, size: 36, color: Colors.blue),
+                   ),
+                   const SizedBox(width: 16),
+                   Expanded(
+                     child: Column(
+                       crossAxisAlignment: CrossAxisAlignment.start,
+                       children: [
+                         Text(
+                           student['name'] ?? 'Unknown Student',
+                           style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                         ),
+                         Text(
+                           "Class: ${_getClassName(student['classId'])}",
+                           style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                         ),
+                       ],
+                     ),
+                   ),
                 ],
               ),
-              SizedBox(height: 8),
+              const SizedBox(height: 24),
+              const Divider(),
+              const SizedBox(height: 16),
               Row(
                 children: [
-                  Icon(Icons.location_on, color: Colors.grey),
-                  SizedBox(width: 8),
-                  Expanded(child: Text("Address: ${student['address'] ?? 'Not Available'}", style: TextStyle(fontSize: 16))),
+                  const Icon(Icons.location_on_outlined, color: Colors.blueGrey, size: 20),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      student['address'] ?? 'Address not available',
+                      style: const TextStyle(fontSize: 16, color: Colors.blueGrey),
+                    ),
+                  ),
                 ],
               ),
-              SizedBox(height: 24),
-              ElevatedButton.icon(
-                icon: Icon(Icons.message), 
-                label: Text("Continue with WhatsApp"),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green, 
-                  foregroundColor: Colors.white,
-                  padding: EdgeInsets.symmetric(vertical: 12)
-                ),
-                onPressed: () => _launchWhatsApp(student['mobileNumber']),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                   const Icon(Icons.phone_outlined, color: Colors.blueGrey, size: 20),
+                   const SizedBox(width: 12),
+                   Text(
+                     phoneNumber ?? 'No phone number available',
+                     style: const TextStyle(fontSize: 16, color: Colors.blueGrey),
+                   ),
+                ],
               ),
-              SizedBox(height: 12),
-              ElevatedButton.icon(
-                icon: Icon(Icons.email),
-                label: Text("Continue with Email"),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blueAccent,
-                  foregroundColor: Colors.white,
-                  padding: EdgeInsets.symmetric(vertical: 12)
+              const SizedBox(height: 32),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  icon: const Icon(Icons.call, size: 24), 
+                  label: const Text("CALL PARENTS", style: TextStyle(letterSpacing: 1.1, fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green[600], 
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 18),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    elevation: 4,
+                    shadowColor: Colors.green.withOpacity(0.4),
+                  ),
+                  onPressed: () => _launchPhoneCall(phoneNumber),
                 ),
-                onPressed: () => _launchEmail(student['email']),
               ),
-              SizedBox(height: 10),
+              const SizedBox(height: 16),
             ],
           ),
         );
@@ -107,88 +153,132 @@ class _StudentSearchScreenState extends State<StudentSearchScreen> {
     );
   }
 
-  Future<void> _launchWhatsApp(String? mobile) async {
+  Future<void> _launchPhoneCall(String? mobile) async {
     if (mobile == null || mobile.isEmpty) {
-      _showError("Mobile number not available");
+      _showError("Phone number not available for this student");
       return;
     }
-    // Remove non-digits/ensure international format if needed. 
-    // Assuming Indian numbers +91 or raw 10 digit.
-    // If raw 10 digit, append 91? Let's check user intent. Usually better to just try.
-    // Making it safe:
-    String cleanNumber = mobile.replaceAll(RegExp(r'\D'), ''); 
-    if (cleanNumber.length == 10) cleanNumber = "91$cleanNumber"; // Default to India if 10 digits
-
-    final Uri url = Uri.parse("https://wa.me/$cleanNumber");
+    
+    final String cleanNumber = mobile.replaceAll(RegExp(r'[^\d+]'), '');
+    final Uri url = Uri.parse("tel:$cleanNumber");
+    
     if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
+      await launchUrl(url);
     } else {
-      _showError("Could not launch WhatsApp");
-    }
-  }
-
-  Future<void> _launchEmail(String? email) async {
-    if (email == null || email.isEmpty) {
-      _showError("Email not available");
-      return;
-    }
-    final Uri emailLaunchUri = Uri(
-      scheme: 'mailto',
-      path: email,
-      query: 'subject=Message from Teacher',
-    );
-    if (await canLaunchUrl(emailLaunchUri)) {
-      await launchUrl(emailLaunchUri);
-    } else {
-      _showError("Could not launch Email app");
+      _showError("Could not launch dialer");
     }
   }
 
   void _showError(String msg) {
     if(!mounted) return;
-    Navigator.pop(context); // Close bottom sheet
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    // Check if bottom sheet is open before popping
+    if (Navigator.canPop(context)) {
+      Navigator.pop(context); 
+    }
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), behavior: SnackBarBehavior.floating));
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Write to Student")),
+      backgroundColor: Colors.grey[50],
+      appBar: AppBar(
+        title: const Text("Contact Parents", style: TextStyle(fontWeight: FontWeight.bold)),
+        elevation: 0,
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black87,
+      ),
       body: Column(
         children: [
-          Padding(
+          Container(
+            color: Colors.white,
             padding: const EdgeInsets.all(16.0),
             child: TextField(
               controller: _searchController,
               decoration: InputDecoration(
-                labelText: "Search Student Name",
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                suffixIcon: IconButton(
-                  icon: Icon(Icons.clear),
-                  onPressed: () {
-                    _searchController.clear();
-                    _performSearch('');
-                  },
+                hintText: "Search student to call parents...",
+                prefixIcon: const Icon(Icons.search, color: Colors.blue),
+                filled: true,
+                fillColor: Colors.grey[100],
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide.none,
                 ),
+                contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                suffixIcon: _searchController.text.isNotEmpty 
+                  ? IconButton(
+                      icon: const Icon(Icons.clear),
+                      onPressed: () {
+                        _searchController.clear();
+                        _performSearch('');
+                      },
+                    )
+                  : null,
               ),
               onChanged: (val) => _performSearch(val),
             ),
           ),
+          const SizedBox(height: 8),
           Expanded(
             child: _isLoading 
-              ? Center(child: CircularProgressIndicator())
+              ? const Center(child: CircularProgressIndicator())
               : _searchResults.isEmpty 
-                ? Center(child: Text("No students found"))
+                ? const Center(child: Text("No students found"))
                 : ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
                     itemCount: _searchResults.length,
                     itemBuilder: (context, index) {
                       final student = _searchResults[index];
-                      return ListTile(
-                        leading: CircleAvatar(child: Icon(Icons.person)),
-                        title: Text(student['name'] ?? 'Unknown'),
-                        subtitle: Text("Class: ${_getClassName(student['classId'])}"),
-                        onTap: () => _showStudentDetails(student),
+                      final String? phoneNumber = student['phone'] ?? student['mobileNumber'];
+                      
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.04),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          leading: CircleAvatar(
+                            backgroundColor: Colors.blue.withOpacity(0.1),
+                            child: const Icon(Icons.person, color: Colors.blue),
+                          ),
+                          title: Text(
+                            student['name'] ?? 'Unknown',
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                          ),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const SizedBox(height: 4),
+                              Text(
+                                "Class: ${_getClassName(student['classId'])}",
+                                style: TextStyle(color: Colors.grey[600]),
+                              ),
+                              if (phoneNumber != null)
+                                Text(
+                                  phoneNumber,
+                                  style: TextStyle(color: Colors.green[700], fontSize: 12),
+                                ),
+                            ],
+                          ),
+                          trailing: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.green.withOpacity(0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.call, color: Colors.green, size: 20),
+                          ),
+                          onTap: () => _showStudentDetails(student),
+                        ),
                       );
                     },
                   ),

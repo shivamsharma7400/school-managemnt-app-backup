@@ -103,6 +103,18 @@ class ReceiptService {
     final double busFeeBase = (classData['busFee'] ?? 0.0).toDouble();
     final double hostelFeeBase = (classData['hostelFee'] ?? 0.0).toDouble();
 
+    // Fetch bus stop fees for destination-based pricing
+    final busSnapshot = await _firestore.collection('bus_destinations').get();
+    Map<String, double> stopFees = {};
+    for (var doc in busSnapshot.docs) {
+      stopFees[doc.id] = (doc.data()['fee'] as num?)?.toDouble() ?? 0.0;
+    }
+
+    final String? busStopId = userData['busStopId']?.toString();
+    final double studentBusFee = (busStopId != null && stopFees.containsKey(busStopId)) 
+        ? stopFees[busStopId]! 
+        : busFeeBase;
+
     List<pw.TableRow> feeRows = [];
     double currentMonthTotal = 0.0;
 
@@ -135,9 +147,9 @@ class ReceiptService {
       feeRows.add(_row('Milk Fee', milkFeeBase.toInt(), milkFeeBase.toInt()));
       currentMonthTotal += milkFeeBase;
     }
-    if (feeConfig['Bus Fee'] != false && busFeeBase > 0) {
-      feeRows.add(_row('Bus Fee', busFeeBase.toInt(), busFeeBase.toInt()));
-      currentMonthTotal += busFeeBase;
+    if (feeConfig['Bus Fee'] != false && studentBusFee > 0) {
+      feeRows.add(_row('Bus Fee', studentBusFee.toInt(), studentBusFee.toInt()));
+      currentMonthTotal += studentBusFee;
     }
     if (feeConfig['Hostel Fee'] != false && hostelFeeBase > 0) {
       feeRows.add(_row('Hostel Fee', hostelFeeBase.toInt(), hostelFeeBase.toInt()));
@@ -153,7 +165,7 @@ class ReceiptService {
       feeRows.add(_row('Previous Due Balance', previousDue.toInt(), previousDue.toInt()));
     } else if (previousDue < 0) {
        // Advanced Payment or discount
-       feeRows.add(_row('Adjustments / Bonus', previousDue.toInt(), previousDue.toInt()));
+       feeRows.add(_row('Previously Paid', previousDue.toInt(), previousDue.toInt()));
     }
 
     pdf.addPage(

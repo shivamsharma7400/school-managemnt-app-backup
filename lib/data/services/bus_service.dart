@@ -13,11 +13,21 @@ class BusService extends ChangeNotifier {
     });
   }
 
-  Future<void> addDestination(String name, double lat, double lng) async {
+  Future<void> addDestination(String name, double lat, double lng, double fee) async {
     await _firestore.collection('bus_destinations').add({
       'name': name,
       'lat': lat,
       'lng': lng,
+      'fee': fee,
+    });
+  }
+
+  Future<void> updateDestination(String id, String name, double lat, double lng, double fee) async {
+    await _firestore.collection('bus_destinations').doc(id).update({
+      'name': name,
+      'lat': lat,
+      'lng': lng,
+      'fee': fee,
     });
   }
 

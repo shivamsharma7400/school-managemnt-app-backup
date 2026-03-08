@@ -80,7 +80,7 @@ class TeacherDashboard extends StatelessWidget {
                         _buildModuleCard(context, 'Announcements', Icons.campaign, Colors.red, () {
                           Navigator.push(context, MaterialPageRoute(builder: (_) => AnnouncementScreen()));
                         }),
-                        _buildModuleCard(context, 'Write to Student', Icons.message, Colors.purple, () {
+                        _buildModuleCard(context, 'Contact Parents', Icons.contact_phone, Colors.purple, () {
                           Navigator.push(context, MaterialPageRoute(builder: (_) => StudentSearchScreen()));
                         }),
                         _buildModuleCard(context, 'Salary/Payment', Icons.attach_money, Colors.green, () {

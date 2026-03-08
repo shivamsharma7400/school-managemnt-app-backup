@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../data/services/fee_service.dart';
 import '../../data/services/user_service.dart';
 import '../../data/models/fee_record.dart';
@@ -22,6 +24,10 @@ class _SchoolDataAnalysisScreenState extends State<SchoolDataAnalysisScreen> {
     'pending': 0,
     'totalGlobalDue': 0,
   };
+  List<double> _monthlyNetProfits = [];
+  List<double> _monthlyIncomes = [];
+  List<double> _monthlyExpenses = [];
+  List<String> _monthsLabels = [];
 
   String _currentSession = '';
 
@@ -44,7 +50,106 @@ class _SchoolDataAnalysisScreenState extends State<SchoolDataAnalysisScreen> {
   Future<void> _loadData() async {
     await _loadFeeData();
     await _loadSessionData();
+    await _loadMonthlyRevenueTrend();
   }
+
+  Future<void> _loadMonthlyRevenueTrend() async {
+    setState(() => _isLoading = true);
+    try {
+      DateTime now = DateTime.now();
+      DateTime rangeStart = DateTime(now.year, now.month - 5, 1);
+      DateTime rangeEnd = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
+
+      // 1. Fetch all transactions for the 6-month range in ONE query
+      final transactionsFuture = FirebaseFirestore.instance
+          .collection('transactions')
+          .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(rangeStart))
+          .where('date', isLessThanOrEqualTo: Timestamp.fromDate(rangeEnd))
+          .get();
+
+      // 2. Fetch staff list ONCE
+      final staffQueryFuture = FirebaseFirestore.instance
+          .collection('users')
+          .where('role', whereIn: ['teacher', 'driver', 'staff'])
+          .get();
+
+      final results = await Future.wait([transactionsFuture, staffQueryFuture]);
+      final transactionsSnapshot = results[0] as QuerySnapshot;
+      final staffSnapshot = results[1] as QuerySnapshot;
+
+      // 3. Fetch salary histories in PARALLEL for all staff
+      final salaryFutures = staffSnapshot.docs.map((staffDoc) => staffDoc.reference
+          .collection('salary_history')
+          .where('type', isEqualTo: 'credit')
+          .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(rangeStart))
+          .where('date', isLessThanOrEqualTo: Timestamp.fromDate(rangeEnd))
+          .get());
+      
+      final salarySnapshots = await Future.wait(salaryFutures);
+
+      // 4. Process all data and group by month in-memory
+      List<double> profits = List.filled(6, 0.0);
+      List<double> incomes = List.filled(6, 0.0);
+      List<double> expenses = List.filled(6, 0.0);
+      List<String> labels = List.filled(6, '');
+
+      for (int i = 0; i < 6; i++) {
+        DateTime monthDate = DateTime(now.year, now.month - (5 - i), 1);
+        labels[i] = DateFormat('MMM').format(monthDate);
+        
+        final mStart = DateTime(monthDate.year, monthDate.month, 1);
+        final mEnd = DateTime(monthDate.year, monthDate.month + 1, 0, 23, 59, 59);
+
+        // Filter transactions for this month from the big snapshot
+        for (var doc in transactionsSnapshot.docs) {
+          final data = doc.data() as Map<String, dynamic>;
+          final date = (data['date'] as Timestamp).toDate();
+          if (date.isAfter(mStart.subtract(const Duration(seconds: 1))) && date.isBefore(mEnd.add(const Duration(seconds: 1)))) {
+             final type = data['type']?.toString() ?? '';
+             final amt = (data['amount'] as num?)?.toDouble() ?? 0.0;
+             if (type == 'Fee Payment' || type == 'Manual Income') {
+               incomes[i] += amt;
+             } else if (type == 'Manual Expense') {
+               expenses[i] += amt;
+             }
+          }
+        }
+
+        // Add salaries for this month from parallel snapshots
+        for (var sSnap in salarySnapshots) {
+          for (var histDoc in sSnap.docs) {
+            final hData = histDoc.data();
+            final date = (hData['date'] as Timestamp).toDate();
+             if (date.isAfter(mStart.subtract(const Duration(seconds: 1))) && date.isBefore(mEnd.add(const Duration(seconds: 1)))) {
+               expenses[i] += (hData['amount'] as num?)?.toDouble() ?? 0.0;
+             }
+          }
+        }
+        profits[i] = incomes[i] - expenses[i];
+      }
+
+      setState(() {
+        _monthlyNetProfits = profits;
+        _monthlyIncomes = incomes;
+        _monthlyExpenses = expenses;
+        _monthsLabels = labels;
+      });
+    } catch (e) {
+      print('Error loading trend data: $e');
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  double _getMaxY() {
+    if (_monthlyIncomes.isEmpty) return 10000;
+    double maxIncome = _monthlyIncomes.reduce((a, b) => a > b ? a : b);
+    double maxExpense = _monthlyExpenses.reduce((a, b) => a > b ? a : b);
+    double max = maxIncome > maxExpense ? maxIncome : maxExpense;
+    return max > 0 ? max * 1.2 : 10000;
+  }
+
+  double _getMinY() => 0; // Starting from 0 for Income vs Expense comparison
 
   Future<void> _loadSessionData() async {
      // You need to import SchoolInfoService
@@ -385,121 +490,306 @@ class _SchoolDataAnalysisScreenState extends State<SchoolDataAnalysisScreen> {
   }
 
   Widget _buildFeeStatusCard() {
-    final expected = feeStats['expected'] ?? 0.0;
-    final collected = feeStats['collected'] ?? 0.0;
-    final pending = feeStats['pending'] ?? 0.0;
-    
-    // Avoid division by zero
-    final safeExpected = expected == 0 ? 1.0 : expected; 
+    if (_monthlyNetProfits.isEmpty) return const Center(child: CircularProgressIndicator());
 
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: InkWell(
-        onTap: () {
-          // Navigate to Fee Management
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => FeeManagementScreen()), 
-          );
-        },
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  Text(
-                    'Fee Status',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Spacer(),
-                  if (expected == 0)
-                    Text(
-                      'No Data',
-                      style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic),
-                    ),
-                  Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
-                ],
-              ),
-              SizedBox(height: 20),
-              // Same chart content...
-              SizedBox(
-                height: 250, 
-                child: Stack(
+    final latestIncome = _monthlyIncomes.last;
+    final latestExpense = _monthlyExpenses.last;
+    final latestNet = _monthlyNetProfits.last;
+    final isLoss = latestNet < 0;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(30),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.indigo.withOpacity(0.05),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header Section
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    PieChart(
-                      PieChartData(
-                        sectionsSpace: 2,
-                        centerSpaceRadius: 60,
-                        sections: [
-                          PieChartSectionData(
-                            color: Colors.green,
-                            value: collected,
-                            // Hide title if value is small to avoid clutter
-                            title: collected > 0 ? '${((collected / safeExpected) * 100).toStringAsFixed(1)}%' : '',
-                            radius: 50,
-                            titleStyle: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                          PieChartSectionData(
-                            color: Colors.redAccent,
-                            value: pending < 0 ? 0 : pending, // Handle overpayment edge case visually
-                            title: pending > 0 ? '${((pending / safeExpected) * 100).toStringAsFixed(1)}%' : '',
-                            radius: 50,
-                            titleStyle: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
+                    Text(
+                      'Revenue Analytics',
+                      style: GoogleFonts.outfit(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF1E293B),
+                        letterSpacing: -0.5,
                       ),
                     ),
-                    Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            'Expected',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey,
-                            ),
-                          ),
-                          Text(
-                            '₹${(expected / 1000).toStringAsFixed(1)}k',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black87,
-                            ),
-                          ),
-                        ],
+                    const SizedBox(height: 4),
+                    Text(
+                      'Cash flow & net balance overview',
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        color: Colors.blueGrey.shade400,
                       ),
                     ),
                   ],
                 ),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.indigo.shade50,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.analytics_rounded, color: Colors.indigo.shade700, size: 24),
+                ),
+              ],
+            ),
+            const SizedBox(height: 32),
+
+            // Summary Stats Section
+            Row(
+              children: [
+                _buildSummaryStatCard(
+                  'Income',
+                  '₹${(latestIncome / 1000).toStringAsFixed(1)}k',
+                  const Color(0xFF10B981),
+                  Icons.arrow_upward_rounded,
+                ),
+                const SizedBox(width: 16),
+                _buildSummaryStatCard(
+                  'Expense',
+                  '₹${(latestExpense / 1000).toStringAsFixed(1)}k',
+                  const Color(0xFFEF4444),
+                  Icons.arrow_downward_rounded,
+                ),
+                const SizedBox(width: 16),
+                _buildSummaryStatCard(
+                  isLoss ? 'Net Loss' : 'Net Profit',
+                  '₹${(latestNet.abs() / 1000).toStringAsFixed(1)}k',
+                  isLoss ? const Color(0xFFF59E0B) : const Color(0xFF6366F1),
+                  isLoss ? Icons.warning_rounded : Icons.account_balance_wallet_rounded,
+                ),
+              ],
+            ),
+            const SizedBox(height: 40),
+
+            // Chart Section
+            SizedBox(
+              height: 300,
+              child: BarChart(
+                BarChartData(
+                  alignment: BarChartAlignment.spaceEvenly,
+                  maxY: _getMaxY(),
+                  barTouchData: BarTouchData(
+                    touchTooltipData: BarTouchTooltipData(
+                      tooltipPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      tooltipMargin: 10,
+                      getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                        final income = _monthlyIncomes[groupIndex];
+                        final expense = _monthlyExpenses[groupIndex];
+                        final net = _monthlyNetProfits[groupIndex];
+                        final isLoss = net < 0;
+
+                        return BarTooltipItem(
+                          '${_monthsLabels[groupIndex]}\n',
+                          GoogleFonts.outfit(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                          children: [
+                            TextSpan(
+                              text: 'Income: ',
+                              style: GoogleFonts.inter(color: Colors.white70, fontSize: 12),
+                            ),
+                            TextSpan(
+                              text: '₹${income.toStringAsFixed(0)}\n',
+                              style: GoogleFonts.inter(color: const Color(0xFF10B981), fontWeight: FontWeight.bold, fontSize: 12),
+                            ),
+                            TextSpan(
+                              text: 'Expense: ',
+                              style: GoogleFonts.inter(color: Colors.white70, fontSize: 12),
+                            ),
+                            TextSpan(
+                              text: '₹${expense.toStringAsFixed(0)}\n',
+                              style: GoogleFonts.inter(color: const Color(0xFFEF4444), fontWeight: FontWeight.bold, fontSize: 12),
+                            ),
+                            const TextSpan(text: '----------------\n'),
+                            TextSpan(
+                              text: isLoss ? 'Net Loss: ' : 'Net Profit: ',
+                              style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13),
+                            ),
+                            TextSpan(
+                              text: '₹${net.abs().toStringAsFixed(0)}',
+                              style: GoogleFonts.inter(
+                                color: isLoss ? const Color(0xFFF59E0B) : const Color(0xFF6366F1),
+                                fontWeight: FontWeight.w900,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+                  titlesData: FlTitlesData(
+                    show: true,
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        getTitlesWidget: (value, meta) {
+                          int index = value.toInt();
+                          if (index >= 0 && index < _monthsLabels.length) {
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 12.0),
+                              child: Text(
+                                _monthsLabels[index],
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.blueGrey.shade300,
+                                ),
+                              ),
+                            );
+                          }
+                          return const SizedBox();
+                        },
+                      ),
+                    ),
+                    leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  ),
+                  gridData: FlGridData(
+                    show: true,
+                    drawVerticalLine: false,
+                    getDrawingHorizontalLine: (value) => FlLine(
+                      color: Colors.grey.withOpacity(0.05),
+                      strokeWidth: 1,
+                    ),
+                  ),
+                  borderData: FlBorderData(show: false),
+                  barGroups: _monthlyIncomes.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    return BarChartGroupData(
+                      x: index,
+                      barRods: [
+                        // Income Bar
+                        BarChartRodData(
+                          toY: _monthlyIncomes[index],
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF10B981), Color(0xFF34D399)],
+                            begin: Alignment.bottomCenter,
+                            end: Alignment.topCenter,
+                          ),
+                          width: 12,
+                          borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+                        ),
+                        // Expense Bar
+                        BarChartRodData(
+                          toY: _monthlyExpenses[index],
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFFEF4444), Color(0xFFF87171)],
+                            begin: Alignment.bottomCenter,
+                            end: Alignment.topCenter,
+                          ),
+                          width: 12,
+                          borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+                        ),
+                      ],
+                    );
+                  }).toList(),
+                ),
               ),
-              SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _buildIndicator(Colors.green, 'Collected', '₹${collected.toStringAsFixed(0)}'),
-                  _buildIndicator(Colors.redAccent, 'Pending', '₹${pending.toStringAsFixed(0)}'),
-                ],
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 24),
+
+            // Legend Section
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _buildLegendItem('Income', const Color(0xFF10B981)),
+                const SizedBox(width: 24),
+                _buildLegendItem('Expense', const Color(0xFFEF4444)),
+              ],
+            ),
+          ],
         ),
       ),
+    );
+  }
+
+  Widget _buildSummaryStatCard(String title, String value, Color color, IconData icon) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: color.withOpacity(0.1)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: color, size: 18),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              title,
+              style: GoogleFonts.inter(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Colors.blueGrey.shade600,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              value,
+              style: GoogleFonts.outfit(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLegendItem(String label, Color color) {
+    return Row(
+      children: [
+        Container(
+          width: 12,
+          height: 12,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(3),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          label,
+          style: GoogleFonts.inter(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: Colors.blueGrey.shade600,
+          ),
+        ),
+      ],
     );
   }
 

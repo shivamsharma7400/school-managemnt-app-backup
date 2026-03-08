@@ -59,22 +59,35 @@ class StudentTestListScreen extends StatelessWidget {
               }
 
               final tests = testSnapshot.data!;
+              
+              // Group tests by teacher name
+              final Map<String, List<Test>> groupedTests = {};
+              for (var test in tests) {
+                final teacherName = test.createdByName;
+                groupedTests.putIfAbsent(teacherName, () => []).add(test);
+              }
 
               return StreamBuilder<List<String>>(
                 stream: testService.getCompletedTestIds(authService.user!.uid),
                 builder: (context, resultSnapshot) {
                   final completedIds = resultSnapshot.data ?? [];
+                  final teacherNames = groupedTests.keys.toList()..sort((a, b) {
+                    if (a == 'Unorganized') return 1;
+                    if (b == 'Unorganized') return -1;
+                    return a.compareTo(b);
+                  });
 
                   return SliverPadding(
                     padding: const EdgeInsets.all(16),
                     sliver: SliverList(
                       delegate: SliverChildBuilderDelegate(
                         (context, index) {
-                          final test = tests[index];
-                          final isCompleted = completedIds.contains(test.id);
-                          return _buildTestCard(context, test, isCompleted);
+                          final teacherName = teacherNames[index];
+                          final teacherTests = groupedTests[teacherName]!;
+                          
+                          return _buildTeacherFolder(context, teacherName, teacherTests, completedIds);
                         },
-                        childCount: tests.length,
+                        childCount: teacherNames.length,
                       ),
                     ),
                   );
@@ -89,20 +102,21 @@ class StudentTestListScreen extends StatelessWidget {
 
   Widget _buildAppBar() {
     return SliverAppBar(
-      expandedHeight: 120,
+      expandedHeight: 140,
       pinned: true,
       elevation: 0,
       flexibleSpace: FlexibleSpaceBar(
+        titlePadding: const EdgeInsets.only(left: 16, bottom: 16),
         title: Text(
           'Online Tests',
-          style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: Colors.white),
+          style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white),
         ),
         background: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [Colors.deepOrange[700]!, Colors.deepOrange[400]!],
+              colors: [Colors.indigo[700]!, Colors.indigo[500]!],
             ),
           ),
           child: Stack(
@@ -110,10 +124,66 @@ class StudentTestListScreen extends StatelessWidget {
               Positioned(
                 right: -20,
                 top: -20,
-                child: Icon(Icons.quiz, size: 150, color: Colors.white.withOpacity(0.1)),
+                child: Icon(Icons.quiz, size: 160, color: Colors.white.withOpacity(0.1)),
               ),
+              Positioned(
+                bottom: 40,
+                left: 16,
+                child: Text(
+                  "Organized by Teacher",
+                  style: GoogleFonts.poppins(color: Colors.white70, fontSize: 12),
+                ),
+              )
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTeacherFolder(BuildContext context, String teacherName, List<Test> tests, List<String> completedIds) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          initiallyExpanded: false,
+          leading: Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.indigo.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(Icons.folder_shared_rounded, color: Colors.indigo[600]),
+          ),
+          title: Text(
+            teacherName,
+            style: GoogleFonts.poppins(
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+              color: Colors.blueGrey[900],
+            ),
+          ),
+          subtitle: Text(
+            "${tests.length} Released Tests",
+            style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey[600]),
+          ),
+          childrenPadding: const EdgeInsets.only(left: 12, right: 12, bottom: 12),
+          children: tests.map((test) {
+            final isCompleted = completedIds.contains(test.id);
+            return _buildTestCard(context, test, isCompleted);
+          }).toList(),
         ),
       ),
     );

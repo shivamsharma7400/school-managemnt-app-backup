@@ -16,6 +16,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _phoneController = TextEditingController();
   final _dobController = TextEditingController();
   final _addressController = TextEditingController();
+  final _workController = TextEditingController();
   String _selectedGender = 'Male';
   bool _isLoading = false;
   bool _obscurePassword = true;
@@ -55,6 +56,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       'dob': _dobController.text.trim(),
       'gender': _selectedGender,
       'address': _addressController.text.trim(),
+      'work': _workController.text.trim(),
       'requestedRole': requestedRole,
     };
 
@@ -331,6 +333,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
           SizedBox(height: 16),
           _buildTextField(_addressController, 'Address (Aadhar)', Icons.home_outlined, maxLines: 2),
+          if (role != 'student') ...[
+            SizedBox(height: 16),
+            _buildTextField(_workController, 'Work / Responsibility', Icons.work_outline),
+          ],
           SizedBox(height: 16),
           _buildPasswordField(),
           SizedBox(height: 32),

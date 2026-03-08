@@ -8,6 +8,7 @@ class Test {
   final String subject;
   final int durationMinutes;
   final String createdBy;
+  final String createdByName;
   final DateTime createdAt;
   final List<Question> questions;
 
@@ -19,6 +20,7 @@ class Test {
     required this.subject,
     required this.durationMinutes,
     required this.createdBy,
+    required this.createdByName,
     required this.createdAt,
     required this.questions,
   });
@@ -32,6 +34,7 @@ class Test {
       subject: data['subject'] ?? '',
       durationMinutes: data['durationMinutes'] ?? 0,
       createdBy: data['createdBy'] ?? '',
+      createdByName: data['createdByName'] ?? 'Unorganized',
       createdAt: (data['createdAt'] as Timestamp).toDate(),
       questions: (data['questions'] as List<dynamic>)
           .map((q) => Question.fromMap(q))
@@ -47,6 +50,7 @@ class Test {
       'subject': subject,
       'durationMinutes': durationMinutes,
       'createdBy': createdBy,
+      'createdByName': createdByName,
       'createdAt': Timestamp.fromDate(createdAt),
       'questions': questions.map((q) => q.toMap()).toList(),
     };

@@ -64,53 +64,106 @@ class _RoutineList extends StatelessWidget {
                   BoxShadow(color: Colors.blue.withOpacity(0.05), blurRadius: 10, offset: Offset(0, 4))
                 ]
               ),
-              child: ListTile(
-                contentPadding: EdgeInsets.all(16),
-                title: Text(
-                  routine['title'] ?? '', 
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.blue.shade900)
-                ),
-                subtitle: Padding(
-                  padding: const EdgeInsets.only(top: 8.0),
-                  child: SelectableLinkify(
-                    onOpen: (link) async {
-                       final Uri url = Uri.parse(link.url);
-                       if (await canLaunchUrl(url)) {
-                         await launchUrl(url, mode: LaunchMode.externalApplication);
-                       }
-                    },
-                    text: routine['description'] ?? '',
-                    style: TextStyle(color: Colors.black87, height: 1.4),
-                    linkStyle: TextStyle(color: Colors.blue, decoration: TextDecoration.underline),
+              child: Column(
+                children: [
+                  ListTile(
+                    contentPadding: EdgeInsets.all(16),
+                    title: Text(
+                      routine['title'] ?? '', 
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.blue.shade900)
+                    ),
+                    subtitle: routine['tableData'] == null ? Padding(
+                      padding: const EdgeInsets.only(top: 8.0),
+                      child: SelectableLinkify(
+                        onOpen: (link) async {
+                           final Uri url = Uri.parse(link.url);
+                           if (await canLaunchUrl(url)) {
+                             await launchUrl(url, mode: LaunchMode.externalApplication);
+                           }
+                        },
+                        text: routine['description'] ?? '',
+                        style: TextStyle(color: Colors.black87, height: 1.4),
+                        linkStyle: TextStyle(color: Colors.blue, decoration: TextDecoration.underline),
+                      ),
+                    ) : null,
+                    trailing: routine['imageUrl'] != null && (routine['imageUrl'] as String).isNotEmpty
+                        ? InkWell(
+                            onTap: () => _showFullScreenImage(context, routine['imageUrl']),
+                            child: Container(
+                              width: 60,
+                              height: 60,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(8),
+                                image: DecorationImage(
+                                  image: NetworkImage(routine['imageUrl']),
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                            ),
+                          )
+                        : null,
+                    leading: CircleAvatar(
+                      backgroundColor: Colors.blue.shade50,
+                      child: Icon(
+                        type == 'class' 
+                            ? Icons.book 
+                            : type == 'bus' 
+                                ? Icons.airport_shuttle 
+                                : Icons.table_chart, 
+                        color: Colors.blue
+                      ),
+                    ),
                   ),
-                ),
-                trailing: routine['imageUrl'] != null && (routine['imageUrl'] as String).isNotEmpty
-                    ? InkWell(
-                        onTap: () => _showFullScreenImage(context, routine['imageUrl']),
-                        child: Container(
-                          width: 60,
-                          height: 60,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(8),
-                            image: DecorationImage(
-                              image: NetworkImage(routine['imageUrl']),
-                              fit: BoxFit.cover,
+                  if (routine['tableData'] != null)
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.blue.shade100),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: DataTable(
+                              headingRowColor: MaterialStateProperty.all(Colors.blue.shade50),
+                              columns: List<String>.from(routine['tableData']['columns'] ?? [])
+                                  .map((c) => DataColumn(
+                                        label: Text(c, style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue.shade900)),
+                                      ))
+                                  .toList(),
+                              rows: (routine['tableData']['rows'] as List? ?? [])
+                                  .map((row) {
+                                    // Handle both new Map format and old List format
+                                    final List<dynamic> cells = (row is Map)
+                                        ? List.generate(
+                                            (routine['tableData']['columns'] as List).length,
+                                            (i) => row[i.toString()] ?? "",
+                                          )
+                                        : (row as List);
+
+                                    return DataRow(
+                                      cells: cells.asMap().entries.map((cellEntry) {
+                                        return DataCell(
+                                          Text(
+                                            cellEntry.value.toString(),
+                                            style: TextStyle(
+                                              fontWeight: cellEntry.key == 0 ? FontWeight.bold : FontWeight.normal,
+                                              color: cellEntry.key == 0 ? Colors.blue.shade700 : Colors.black87,
+                                            ),
+                                          ),
+                                        );
+                                      }).toList(),
+                                    );
+                                  })
+                                  .toList(),
                             ),
                           ),
                         ),
-                      )
-                    : null,
-                leading: CircleAvatar(
-                  backgroundColor: Colors.blue.shade50,
-                  child: Icon(
-                    type == 'class' 
-                        ? Icons.book 
-                        : type == 'bus' 
-                            ? Icons.airport_shuttle 
-                            : Icons.table_chart, 
-                    color: Colors.blue
-                  ),
-                ),
+                      ),
+                    ),
+                ],
               ),
             );
           },

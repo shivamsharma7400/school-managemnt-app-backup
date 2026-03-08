@@ -237,7 +237,13 @@ class FeeService extends ChangeNotifier {
         classFees[doc.id] = doc.data();
       }
 
-      // 2. Fetch all students
+      // 2. Fetch all students and bus destinations
+      final busSnapshot = await _firestore.collection('bus_destinations').get();
+      Map<String, double> stopFees = {};
+      for (var doc in busSnapshot.docs) {
+        stopFees[doc.id] = (doc.data()['fee'] as num?)?.toDouble() ?? 0.0;
+      }
+
       final studentsSnapshot = await _firestore
           .collection('users')
           .where('role', isEqualTo: 'student')
@@ -261,7 +267,10 @@ class FeeService extends ChangeNotifier {
            
            // Base fees
            final double coachingFee = (classData['coachingFee'] as num?)?.toDouble() ?? 0.0;
-           final double busFee = (classData['busFee'] as num?)?.toDouble() ?? 0.0;
+           final String? busStopId = data['busStopId']?.toString();
+           final double busFee = (busStopId != null && stopFees.containsKey(busStopId)) 
+               ? stopFees[busStopId]! 
+               : (classData['busFee'] as num?)?.toDouble() ?? 0.0;
            final double hostelFee = (classData['hostelFee'] as num?)?.toDouble() ?? 0.0;
 
            if (feeConfig['Coaching Fee'] != false) studentExpected += coachingFee;
@@ -394,6 +403,12 @@ class FeeService extends ChangeNotifier {
           .where('classId', isEqualTo: classId)
           .get();
 
+      final busSnapshot = await _firestore.collection('bus_destinations').get();
+      Map<String, double> stopFees = {};
+      for (var doc in busSnapshot.docs) {
+        stopFees[doc.id] = (doc.data()['fee'] as num?)?.toDouble() ?? 0.0;
+      }
+
       if (studentsSnapshot.docs.isEmpty) return;
 
       final batch = _firestore.batch();
@@ -408,7 +423,13 @@ class FeeService extends ChangeNotifier {
 
         // Calculate based on active components (default to true if not set)
         if (feeConfig['Coaching Fee'] != false) totalAmount += coachingFee;
-        if (feeConfig['Bus Fee'] != false) totalAmount += busFee;
+        if (feeConfig['Bus Fee'] != false) {
+          final String? busStopId = data['busStopId']?.toString();
+          final double studentBusFee = (busStopId != null && stopFees.containsKey(busStopId)) 
+              ? stopFees[busStopId]! 
+              : busFee;
+          totalAmount += studentBusFee;
+        }
         if (feeConfig['Hostel Fee'] != false) totalAmount += hostelFee;
         
         otherFees.forEach((key, value) {
@@ -559,6 +580,100 @@ class FeeService extends ChangeNotifier {
     } catch (e) {
       print('Error calculating today collection: $e');
       return 0.0;
+    }
+  }
+  /// Get list of months already processed for fines in a session
+  Future<List<String>> getProcessedFineMonths(String session) async {
+    final doc = await _firestore.collection('fee_records').doc(session).get();
+    if (doc.exists && doc.data() != null) {
+      return List<String>.from(doc.data()!['processedFineMonths'] ?? []);
+    }
+    return [];
+  }
+
+  /// Apply auto fines to all students with outstanding dues
+  Future<void> applyAutoFinesToAllDueStudents({
+    required double amount,
+    required String monthName,
+    required String session,
+  }) async {
+    // 1. Check if already processed
+    final recordRef = _firestore.collection('fee_records').doc(session);
+    final recordDoc = await recordRef.get();
+    List<String> processed = [];
+    if (recordDoc.exists) {
+      processed = List<String>.from(recordDoc.data()!['processedFineMonths'] ?? []);
+      if (processed.contains(monthName)) {
+        throw Exception("Fines for $monthName have already been processed.");
+      }
+    }
+
+    try {
+      // 2. Fetch all students and filter in-memory to avoid composite index requirement
+      final studentsSnapshot = await _firestore
+          .collection('users')
+          .where('role', isEqualTo: 'student')
+          .get();
+
+      final dueStudents = studentsSnapshot.docs.where((doc) {
+        final data = doc.data();
+        final due = (data['currentDue'] as num?)?.toDouble() ?? 0.0;
+        return due > 0;
+      }).toList();
+
+      if (dueStudents.isEmpty) {
+        // Even if no students, mark as processed to avoid repeated checks
+        await _markFineProcessed(recordRef, monthName, recordDoc.exists);
+        return;
+      }
+
+      // 3. Apply via Batch
+      final batch = _firestore.batch();
+      for (var doc in dueStudents) {
+        final userId = doc.id;
+        final data = doc.data();
+        final studentName = data['name'] ?? 'Unknown';
+        final classId = data['classId'] ?? 'Unknown';
+
+        // Update Student Due
+        batch.update(_firestore.collection('users').doc(userId), {
+          'currentDue': FieldValue.increment(amount),
+        });
+
+        // Log Transaction
+        final transRef = _firestore.collection('transactions').doc();
+        batch.set(transRef, {
+          'userId': userId,
+          'studentName': studentName,
+          'classId': classId,
+          'amount': amount,
+          'type': 'Fine',
+          'reason': 'Monthly Late Fee ($monthName)',
+          'date': FieldValue.serverTimestamp(),
+        });
+      }
+
+      await batch.commit();
+
+      // 4. Mark as processed globally
+      await _markFineProcessed(recordRef, monthName, recordDoc.exists);
+
+      notifyListeners();
+    } catch (e) {
+      print('Error applying auto fines: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> _markFineProcessed(DocumentReference ref, String month, bool exists) async {
+    if (exists) {
+      await ref.update({
+        'processedFineMonths': FieldValue.arrayUnion([month])
+      });
+    } else {
+      await ref.set({
+        'processedFineMonths': [month]
+      });
     }
   }
 }

@@ -4,8 +4,10 @@ import 'package:uuid/uuid.dart';
 import '../../../data/models/test_model.dart';
 import '../../../data/services/test_service.dart';
 import '../../../data/services/auth_service.dart';
+import '../../../data/services/user_service.dart';
 import '../../common/widgets/class_dropdown.dart';
 import '../../../core/constants/app_constants.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class CreateTestScreen extends StatefulWidget {
   @override
@@ -195,18 +197,9 @@ class _CreateTestScreenState extends State<CreateTestScreen> {
         title: Text(q.text, style: TextStyle(fontWeight: FontWeight.w600)),
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 4.0),
-          child: Row(
-            children: [
-              Chip(
-                label: Text(q.type == 'mcq' ? 'MCQ' : 'Fill Blank', style: TextStyle(fontSize: 10, color: Colors.white)),
-                backgroundColor: q.type == 'mcq' ? Colors.orange : Colors.teal,
-                visualDensity: VisualDensity.compact,
-                padding: EdgeInsets.zero,
-                labelPadding: EdgeInsets.symmetric(horizontal: 8),
-              ),
-              SizedBox(width: 8),
-              Expanded(child: Text('Ans: ${q.correctAnswer}', overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12))),
-            ],
+          child: Text(
+            'Correct Answer: ${q.correctAnswer}', 
+            style: GoogleFonts.poppins(fontSize: 12, color: Colors.blueGrey[600], fontWeight: FontWeight.w500)
           ),
         ),
         trailing: IconButton(
@@ -223,23 +216,70 @@ class _CreateTestScreenState extends State<CreateTestScreen> {
 
   Widget _buildBottomBar() {
     return Container(
-      padding: EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, -5))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 15,
+            offset: const Offset(0, -5),
+          )
+        ],
       ),
       child: SafeArea(
-        child: ElevatedButton(
-          onPressed: _isSubmitting ? null : _submitTest,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.primary,
-            foregroundColor: Colors.white,
-            padding: EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: _isSubmitting ? null : _submitTest,
+            borderRadius: BorderRadius.circular(16),
+            child: Ink(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: _isSubmitting 
+                      ? [Colors.grey, Colors.grey.shade400] 
+                      : [const Color(0xFF6366F1), const Color(0xFF4F46E5)], // Modern Indigo Gradient
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                ),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  if (!_isSubmitting)
+                    BoxShadow(
+                      color: const Color(0xFF6366F1).withOpacity(0.3),
+                      blurRadius: 12,
+                      offset: const Offset(0, 6),
+                    )
+                ],
+              ),
+              child: Container(
+                height: 56,
+                alignment: Alignment.center,
+                child: _isSubmitting
+                    ? const SizedBox(
+                        height: 24,
+                        width: 24,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.rocket_launch_rounded, color: Colors.white, size: 20),
+                          const SizedBox(width: 12),
+                          Text(
+                            'PUBLISH TEST',
+                            style: GoogleFonts.poppins(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                              letterSpacing: 1.2,
+                            ),
+                          ),
+                        ],
+                      ),
+              ),
+            ),
           ),
-          child: _isSubmitting 
-            ? SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) 
-            : Text('PUBLISH TEST', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1.1)),
         ),
       ),
     );
@@ -289,57 +329,21 @@ class _CreateTestScreenState extends State<CreateTestScreen> {
                               onChanged: (val) => qText = val,
                               maxLines: 2,
                             ),
-                            SizedBox(height: 20),
-                            Text("Question Type", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey.shade600)),
-                            SizedBox(height: 8),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: RadioListTile<String>(
-                                    title: Text("MCQ"),
-                                    value: 'mcq',
-                                    groupValue: qType,
-                                    activeColor: AppColors.primary,
-                                    onChanged: (val) => setSheetState(() => qType = val!),
-                                    contentPadding: EdgeInsets.zero,
-                                  ),
-                                ),
-                                Expanded(
-                                  child: RadioListTile<String>(
-                                    title: Text("Fill Blank"),
-                                    value: 'fill_blank',
-                                    groupValue: qType,
-                                    activeColor: AppColors.primary,
-                                    onChanged: (val) => setSheetState(() => qType = val!),
-                                    contentPadding: EdgeInsets.zero,
-                                  ),
-                                ),
-                              ],
+                            const SizedBox(height: 24),
+                            Text("Options", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey.shade600)),
+                            const SizedBox(height: 12),
+                            _buildOptionField('A', (val) => op1 = val),
+                            _buildOptionField('B', (val) => op2 = val),
+                            _buildOptionField('C', (val) => op3 = val),
+                            _buildOptionField('D', (val) => op4 = val),
+                            const SizedBox(height: 20),
+                            DropdownButtonFormField<String>(
+                              decoration: _inputDecoration('Correct Answer', Icons.check_circle_outline),
+                              items: ['A', 'B', 'C', 'D'].map((e) => DropdownMenuItem(value: e, child: Text("Option $e"))).toList(),
+                              onChanged: (val) => selectedOptionIndex = val,
+                              validator: (val) => val == null ? 'Select correct option' : null,
                             ),
-                            
-                            SizedBox(height: 16),
-                            if (qType == 'mcq') ...[
-                              Text("Options", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey.shade600)),
-                              SizedBox(height: 8),
-                              _buildOptionField('A', (val) => op1 = val),
-                              _buildOptionField('B', (val) => op2 = val),
-                              _buildOptionField('C', (val) => op3 = val),
-                              _buildOptionField('D', (val) => op4 = val),
-                              SizedBox(height: 20),
-                              DropdownButtonFormField<String>(
-                                decoration: _inputDecoration('Correct Answer', Icons.check_circle_outline),
-                                items: ['A', 'B', 'C', 'D'].map((e) => DropdownMenuItem(value: e, child: Text("Option $e"))).toList(),
-                                onChanged: (val) => selectedOptionIndex = val,
-                                validator: (val) => val == null ? 'Select correct option' : null,
-                              ),
-                            ] else ...[
-                              TextFormField(
-                                decoration: _inputDecoration('Correct Answer', Icons.check_circle),
-                                validator: (val) => val!.isEmpty ? 'Required' : null,
-                                onChanged: (val) => correctAnsText = val,
-                              ),
-                            ],
-                            SizedBox(height: 24),
+                            const SizedBox(height: 24),
                             SizedBox(
                               width: double.infinity,
                               child: ElevatedButton(
@@ -347,20 +351,16 @@ class _CreateTestScreenState extends State<CreateTestScreen> {
                                   if (_qFormKey.currentState!.validate()) {
                                      String finalCorrectAnswer = '';
                                      
-                                     if (qType == 'mcq') {
-                                       if (selectedOptionIndex == 'A') finalCorrectAnswer = op1;
-                                       else if (selectedOptionIndex == 'B') finalCorrectAnswer = op2;
-                                       else if (selectedOptionIndex == 'C') finalCorrectAnswer = op3;
-                                       else if (selectedOptionIndex == 'D') finalCorrectAnswer = op4;
-                                     } else {
-                                       finalCorrectAnswer = correctAnsText;
-                                     }
+                                     if (selectedOptionIndex == 'A') finalCorrectAnswer = op1;
+                                     else if (selectedOptionIndex == 'B') finalCorrectAnswer = op2;
+                                     else if (selectedOptionIndex == 'C') finalCorrectAnswer = op3;
+                                     else if (selectedOptionIndex == 'D') finalCorrectAnswer = op4;
               
                                      final newQ = Question(
                                        id: Uuid().v4(),
                                        text: qText,
-                                       type: qType,
-                                       options: qType == 'mcq' ? [op1, op2, op3, op4] : [],
+                                       type: 'mcq',
+                                       options: [op1, op2, op3, op4],
                                        correctAnswer: finalCorrectAnswer,
                                      );
                                      setState(() {
@@ -425,20 +425,25 @@ class _CreateTestScreenState extends State<CreateTestScreen> {
 
       final authService = Provider.of<AuthService>(context, listen: false);
       final testService = Provider.of<TestService>(context, listen: false);
-
-      final test = Test(
-        id: '',
-        title: _title,
-        description: _description,
-        classId: _classId!,
-        subject: _subject,
-        durationMinutes: _durationMinutes,
-        createdBy: authService.user!.uid,
-        createdAt: DateTime.now(),
-        questions: _questions,
-      );
+      final userService = Provider.of<UserService>(context, listen: false);
 
       try {
+        final userData = await userService.getUserData(authService.user!.uid);
+        final teacherName = userData?['name'] ?? 'Teacher';
+
+        final test = Test(
+          id: '',
+          title: _title,
+          description: _description,
+          classId: _classId!,
+          subject: _subject,
+          durationMinutes: _durationMinutes,
+          createdBy: authService.user!.uid,
+          createdByName: teacherName,
+          createdAt: DateTime.now(),
+          questions: _questions,
+        );
+
         await testService.createTest(test);
         if (mounted) {
           Navigator.pop(context);

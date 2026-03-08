@@ -230,22 +230,28 @@ class NotificationService extends ChangeNotifier {
   Future<void> sendNotificationToUser(
     String userId,
     String title,
-    String body,
-  ) async {
+    String body, {
+    String? type,
+    Map<String, dynamic>? data,
+  }) async {
     await FirebaseFirestore.instance.collection('notifications').add({
       'userId': userId,
       'title': title,
       'body': body,
       'date': FieldValue.serverTimestamp(),
       'read': false,
+      'type': type,
+      'data': data,
     });
   }
 
   Future<void> sendNotificationToClass(
     String classId,
     String title,
-    String body,
-  ) async {
+    String body, {
+    String? type,
+    Map<String, dynamic>? data,
+  }) async {
     // In a real backend, we'd trigger a Cloud Function.
     // Here, we can iterate users (inefficient but works for MVP) or just create a 'class_broadcast' collection
     // Let's create individual notifications for now so they appear in user's inbox
@@ -265,6 +271,8 @@ class NotificationService extends ChangeNotifier {
         'body': body,
         'date': FieldValue.serverTimestamp(),
         'read': false,
+        'type': type,
+        'data': data,
       });
     }
 
@@ -275,6 +283,8 @@ class NotificationService extends ChangeNotifier {
     String title,
     String body, {
     String? targetRole,
+    String? type,
+    Map<String, dynamic>? data,
   }) async {
     // Simulating broadcast by sending to all users (inefficient for large scale, ok for MVP)
     // or better, sending to a 'topic' if using FCM directly.
@@ -296,6 +306,8 @@ class NotificationService extends ChangeNotifier {
         'body': body,
         'date': FieldValue.serverTimestamp(),
         'read': false,
+        'type': type,
+        'data': data,
       });
     }
     await batch.commit();

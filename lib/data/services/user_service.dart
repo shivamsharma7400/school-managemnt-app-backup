@@ -198,6 +198,24 @@ class UserService extends ChangeNotifier {
             }).toList());
   }
 
+  Stream<List<Map<String, dynamic>>> getStudentsByBusStops(List<String> busStopIds) {
+    if (busStopIds.isEmpty) {
+      return Stream.value([]);
+    }
+    // Firestore 'whereIn' supports up to 30 items. 
+    // Usually bus stops for a single trip will be well within this limit.
+    return _firestore
+        .collection('users')
+        .where('role', isEqualTo: 'student')
+        .where('busStopId', whereIn: busStopIds)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map((doc) {
+              final data = doc.data();
+              data['id'] = doc.id;
+              return data;
+            }).toList());
+  }
+
   Future<void> updateStudentDue(String uid, double newDue) async {
     await _firestore.collection('users').doc(uid).update({
       'currentDue': newDue,
@@ -287,6 +305,18 @@ class UserService extends ChangeNotifier {
     });
   }
 
+  Future<void> updateStudentBusStop(String userId, String? busStopId) async {
+    await _firestore.collection('users').doc(userId).update({
+      'busStopId': busStopId,
+    });
+  }
+
+  Future<void> updateStudentBusFeeOverride(String userId, double? feeOverride) async {
+    await _firestore.collection('users').doc(userId).update({
+      'busFeeOverride': feeOverride,
+    });
+  }
+
   Future<List<String>> getProcessedMonths(String session) async {
     final doc = await _firestore.collection('salary_records').doc(session).get();
     if (doc.exists && doc.data() != null) {
@@ -356,28 +386,45 @@ class UserService extends ChangeNotifier {
 
     await batch.commit();
   }
-/*
-  Future<void> processMonthlySalaryForAll() async {
-    final teachersSnapshot = await _firestore
-        .collection('users')
-        .where('role', whereIn: ['teacher', 'driver', 'staff'])
-        .get();
+  Future<void> recordStaffPayment(String uid, double amount, String method, String month) async {
+    final userRef = _firestore.collection('users').doc(uid);
+    final userDoc = await userRef.get();
+    if (!userDoc.exists) return;
 
-    final batch = _firestore.batch();
-    for (var doc in teachersSnapshot.docs) {
-      final data = doc.data();
-      final currentDue = (data['salaryDue'] as num?)?.toDouble() ?? 0.0;
-      final monthlySalary = (data['monthlySalary'] as num?)?.toDouble() ?? 0.0;
-      
-      if (monthlySalary > 0) {
-        batch.update(doc.reference, {
-          'salaryDue': currentDue + monthlySalary,
-        });
-      }
-    }
-    await batch.commit();
+    final currentDue = (userDoc.data()?['salaryDue'] as num?)?.toDouble() ?? 0.0;
+    final balanceAfter = currentDue - amount;
+
+    await _firestore.runTransaction((transaction) async {
+      transaction.update(userRef, {
+        'salaryDue': balanceAfter,
+      });
+
+      final historyRef = userRef.collection('salary_history').doc();
+      transaction.set(historyRef, {
+        'date': FieldValue.serverTimestamp(),
+        'amount': amount,
+        'type': 'debit',
+        'method': method,
+        'month': month,
+        'balanceAfter': balanceAfter,
+        'description': 'Payment Received for $month'
+      });
+    });
   }
-*/
+
+  Stream<List<Map<String, dynamic>>> getStaffSalaryHistory(String uid) {
+    return _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('salary_history')
+        .orderBy('date', descending: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map((doc) {
+              final data = doc.data();
+              data['id'] = doc.id;
+              return data;
+            }).toList());
+  }
 
   Future<void> uploadProfilePhoto(String userId, File file) async {
     try {

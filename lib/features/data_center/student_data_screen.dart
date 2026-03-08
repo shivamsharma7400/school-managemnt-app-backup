@@ -98,7 +98,21 @@ class _ResponsiveDataViewState extends State<_ResponsiveDataView> {
 
   @override
   Widget build(BuildContext context) {
-    final filteredStudents = widget.students.where((s) {
+    // Sort students numerically by admNo
+    final sortedStudents = widget.students.toList();
+    sortedStudents.sort((a, b) {
+      final admA = a['admNo']?.toString() ?? '';
+      final admB = b['admNo']?.toString() ?? '';
+      
+      // Extract numeric part using regex
+      final numA = int.tryParse(RegExp(r'(\d+)').firstMatch(admA)?.group(1) ?? '') ?? 0;
+      final numB = int.tryParse(RegExp(r'(\d+)').firstMatch(admB)?.group(1) ?? '') ?? 0;
+      
+      if (numA != numB) return numA.compareTo(numB);
+      return admA.compareTo(admB); // Fallback to string compare
+    });
+
+    final filteredStudents = sortedStudents.where((s) {
       final name = (s['name'] ?? '').toString().toLowerCase();
       final adm = (s['admNo'] ?? '').toString().toLowerCase();
       return name.contains(_searchQuery.toLowerCase()) || 

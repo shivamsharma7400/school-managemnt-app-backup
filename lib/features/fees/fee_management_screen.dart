@@ -6,6 +6,8 @@ import '../../data/services/fee_service.dart';
 import '../../data/models/class_model.dart';
 import 'package:intl/intl.dart';
 import '../../data/services/school_info_service.dart';
+import '../../data/models/bus_destination.dart';
+import '../../data/services/bus_service.dart';
 
 class FeeManagementScreen extends StatefulWidget {
   const FeeManagementScreen({super.key});
@@ -19,6 +21,101 @@ class _FeeManagementScreenState extends State<FeeManagementScreen>
   TabController? _tabController;
   List<ClassModel> _classes = [];
   String? _selectedClassId;
+  bool _isAutoPilotEnabled = false;
+  int _autoPilotDay = 1;
+  bool _isFineAutoPilotEnabled = false;
+  int _fineAutoPilotDay = 10;
+  double _fineAmount = 0;
+  bool _isProcessing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAutoPilotSettings();
+  }
+
+  Future<void> _loadAutoPilotSettings() async {
+    final schoolService = Provider.of<SchoolInfoService>(context, listen: false);
+    final data = await schoolService.getSchoolInfo();
+    if (data != null && mounted) {
+      setState(() {
+        _isAutoPilotEnabled = data['feeAutoPilotEnabled'] == true;
+        _autoPilotDay = (data['feeAutoPilotDay'] as num?)?.toInt() ?? 1;
+        _isFineAutoPilotEnabled = data['fineAutoPilotEnabled'] == true;
+        _fineAutoPilotDay = (data['fineAutoPilotDay'] as num?)?.toInt() ?? 10;
+        _fineAmount = (data['fineAutoPilotAmount'] as num?)?.toDouble() ?? 0.0;
+      });
+      if (_isAutoPilotEnabled || _isFineAutoPilotEnabled) {
+        _checkAndAutoProcessFees();
+      }
+    }
+  }
+
+  Future<void> _checkAndAutoProcessFees() async {
+    final now = DateTime.now();
+    // Fetch current session
+    String currentSession = '2025-26';
+    try {
+      final schoolService = Provider.of<SchoolInfoService>(context, listen: false);
+      final data = await schoolService.getSchoolInfo();
+      if (data != null && data['currentSession'] != null) {
+        currentSession = data['currentSession'];
+      }
+    } catch (e) {}
+
+    final feeService = Provider.of<FeeService>(context, listen: false);
+    final currentMonthName = DateFormat('MMMM').format(now);
+    final year = _calculateYearForMonth(currentMonthName, currentSession);
+    final fullMonthName = "$currentMonthName $year";
+
+    // 1. Check Fee Auto Pilot
+    if (_isAutoPilotEnabled == true && now.day >= _autoPilotDay) {
+      try {
+        final processedMonths = await feeService.getProcessedFeeMonths(currentSession);
+        if (!processedMonths.contains(fullMonthName) && _isProcessing != true) {
+          setState(() => _isProcessing = true);
+          await _processFees(context, fullMonthName, currentSession);
+          setState(() => _isProcessing = false);
+        }
+      } catch (e) {
+        print('Error in fee auto process check: $e');
+      }
+    }
+
+    // 2. Check Fine Auto Pilot
+    if (_isFineAutoPilotEnabled == true && now.day >= _fineAutoPilotDay && _fineAmount > 0) {
+      try {
+        final processedFineMonths = await feeService.getProcessedFineMonths(currentSession);
+        if (!processedFineMonths.contains(fullMonthName) && _isProcessing != true) {
+          setState(() => _isProcessing = true);
+          await _applyAutoFines(context, fullMonthName, currentSession);
+          setState(() => _isProcessing = false);
+        }
+      } catch (e) {
+        print('Error in fine auto process check: $e');
+      }
+    }
+  }
+
+  Future<void> _applyAutoFines(BuildContext context, String monthName, String session) async {
+    try {
+      await Provider.of<FeeService>(context, listen: false).applyAutoFinesToAllDueStudents(
+        amount: _fineAmount,
+        monthName: monthName,
+        session: session,
+      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: Colors.orange[800],
+            content: Text('Successfully applied late fines for $monthName'),
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error applying auto fines: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -100,6 +197,17 @@ class _FeeManagementScreenState extends State<FeeManagementScreen>
               tooltip: 'Process Monthly Fees',
             ),
           ),
+        Container(
+          margin: const EdgeInsets.only(right: 8),
+          child: IconButton(
+            onPressed: () => _showAutoPilotSettings(context),
+            icon: Icon(
+              _isAutoPilotEnabled == true ? Icons.auto_awesome : Icons.auto_awesome_outlined,
+              color: _isAutoPilotEnabled == true ? Colors.amber : Colors.white60,
+            ),
+            tooltip: 'Auto Pilot Settings',
+          ),
+        ),
       ],
       flexibleSpace: FlexibleSpaceBar(
         background: Container(
@@ -139,59 +247,67 @@ class _FeeManagementScreenState extends State<FeeManagementScreen>
   Widget _buildSummaryCards(ClassModel? classModel) {
     if (classModel == null) return const SizedBox.shrink();
     
-    // We'll use a StreamBuilder here to get real-time stats for the class
-    return StreamBuilder<List<Map<String, dynamic>>>(
-      stream: Provider.of<UserService>(context, listen: false).getStudentsByClass(classModel.id),
-      builder: (context, snapshot) {
-        double totalExpected = 0;
-        double totalDue = 0;
-        double totalMonthlyPending = 0;
-        int studentCount = 0;
+    // We'll use StreamBuilders to get real-time stats for the class and bus destinations
+    return StreamBuilder<List<BusDestination>>(
+      stream: Provider.of<BusService>(context, listen: false).getDestinations(),
+      builder: (context, destSnapshot) {
+        final destinations = destSnapshot.data ?? [];
+        
+        return StreamBuilder<List<Map<String, dynamic>>>(
+          stream: Provider.of<UserService>(context, listen: false).getStudentsByClass(classModel.id),
+          builder: (context, snapshot) {
+            double totalExpected = 0;
+            double totalDue = 0;
+            double totalMonthlyPending = 0;
 
-        if (snapshot.hasData) {
-          studentCount = snapshot.data!.length;
-          
-          for (var s in snapshot.data!) {
-            // Calculate individual expected fee
-            final feeConfig = s['feeConfig'] as Map<String, dynamic>? ?? {};
-            double studentExpected = 0.0;
-            
-            if (feeConfig['Coaching Fee'] != false) studentExpected += classModel.coachingFee;
-            if (feeConfig['Bus Fee'] != false) studentExpected += classModel.busFee;
-            if (feeConfig['Hostel Fee'] != false) studentExpected += classModel.hostelFee;
-            
-            classModel.otherFees.forEach((key, value) {
-              if (feeConfig[key] != false) studentExpected += value;
-            });
+            if (snapshot.hasData) {
+              for (var s in snapshot.data!) {
+                // Calculate individual expected fee
+                final feeConfig = s['feeConfig'] as Map<String, dynamic>? ?? {};
+                double studentExpected = 0.0;
+                
+                if (feeConfig['Coaching Fee'] != false) studentExpected += classModel.coachingFee;
+                if (feeConfig['Bus Fee'] != false) {
+                  final busStopId = s['busStopId']?.toString();
+                  final stop = destinations.firstWhere(
+                    (d) => d.id == busStopId,
+                    orElse: () => BusDestination(id: '', name: '', lat: 0, lng: 0, fee: classModel.busFee),
+                  );
+                  studentExpected += stop.fee;
+                }
+                if (feeConfig['Hostel Fee'] != false) studentExpected += classModel.hostelFee;
+                
+                classModel.otherFees.forEach((key, value) {
+                  if (feeConfig[key] != false) studentExpected += value;
+                });
 
-            totalExpected += studentExpected;
-            
-            final double currentDue = (s['currentDue'] as num?)?.toDouble() ?? 0.0;
-            totalDue += currentDue;
+                totalExpected += studentExpected;
+                
+                final double currentDue = (s['currentDue'] as num?)?.toDouble() ?? 0.0;
+                totalDue += currentDue;
 
-            // Calculate Monthly Pending for Collected Calculation
-            // If currentDue < expected, it means they paid partial/full for this month (and no arrears).
-            // If currentDue >= expected, they owe at least the full month amount.
-            final double monthlyPending = (currentDue < studentExpected) ? currentDue : studentExpected;
-            totalMonthlyPending += monthlyPending;
+                // Calculate Monthly Pending for Collected Calculation
+                final double monthlyPending = (currentDue < studentExpected) ? currentDue : studentExpected;
+                totalMonthlyPending += monthlyPending;
+              }
+            }
 
-          }
-        }
-
-        return Center(
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _summaryCard('Expected', '₹${totalExpected.toInt()}', Icons.trending_up, Colors.blue),
-                const SizedBox(width: 12),
-                _summaryCard('Pending', '₹${totalDue.toInt()}', Icons.error_outline, Colors.orange),
-                const SizedBox(width: 12),
-                _summaryCard('Collected', '₹${(totalExpected - totalMonthlyPending).clamp(0, double.infinity).toInt()}', Icons.check_circle_outline, Colors.green),
-              ],
-            ),
-          ),
+            return Center(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _summaryCard('Expected', '₹${totalExpected.toInt()}', Icons.trending_up, Colors.blue),
+                    const SizedBox(width: 12),
+                    _summaryCard('Pending', '₹${totalDue.toInt()}', Icons.error_outline, Colors.orange),
+                    const SizedBox(width: 12),
+                    _summaryCard('Collected', '₹${(totalExpected - totalMonthlyPending).clamp(0, double.infinity).toInt()}', Icons.check_circle_outline, Colors.green),
+                  ],
+                ),
+              ),
+            );
+          },
         );
       },
     );
@@ -314,6 +430,16 @@ class _FeeManagementScreenState extends State<FeeManagementScreen>
       'April', 'May', 'June', 'July', 'August', 'September', 
       'October', 'November', 'December', 'January', 'February', 'March'
     ];
+
+    // Auto-tick logic: Pre-select current month if it's the target day or Auto Pilot is on
+    if (_isAutoPilotEnabled == true) {
+      selectedMonth = DateFormat('MMMM').format(DateTime.now());
+      // Special check: Only pre-select if not already processed
+      final year = _calculateYearForMonth(selectedMonth!, currentSession);
+      if (processedMonths.contains("$selectedMonth $year")) {
+        selectedMonth = null;
+      }
+    }
 
     if (!context.mounted) return;
 
@@ -517,6 +643,164 @@ class _FeeManagementScreenState extends State<FeeManagementScreen>
       builder: (context) => _ApplyFineSheet(classModel: classModel),
     );
   }
+
+  void _showAutoPilotSettings(BuildContext context) {
+    final fineAmountController = TextEditingController(text: _fineAmount > 0 ? _fineAmount.toString() : '');
+    
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              const Icon(Icons.auto_awesome, color: Colors.amber),
+              const SizedBox(width: 10),
+              const Text('Auto Pilot Settings'),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Fee Auto Pilot Section
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.indigo.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    children: [
+                      SwitchListTile(
+                        title: const Text('Fee Auto Pilot', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                        subtitle: const Text('Process monthly fees automatically', style: TextStyle(fontSize: 11)),
+                        value: _isAutoPilotEnabled == true,
+                        activeColor: Colors.indigo,
+                        onChanged: (val) {
+                          setDialogState(() => _isAutoPilotEnabled = val);
+                        },
+                      ),
+                      if (_isAutoPilotEnabled == true) ...[
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          child: DropdownButtonFormField<int>(
+                            value: _autoPilotDay,
+                            decoration: const InputDecoration(
+                              labelText: 'Processing Day',
+                              border: OutlineInputBorder(),
+                              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            ),
+                            items: List.generate(31, (i) => i + 1).map((day) {
+                              return DropdownMenuItem(value: day, child: Text("Day $day"));
+                            }).toList(),
+                            onChanged: (val) {
+                              if (val != null) setDialogState(() => _autoPilotDay = val);
+                            },
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Fine Auto Pilot Section
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    children: [
+                      SwitchListTile(
+                        title: const Text('Fine Auto Pilot', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                        subtitle: const Text('Apply late fines to outstanding dues', style: TextStyle(fontSize: 11)),
+                        value: _isFineAutoPilotEnabled == true,
+                        activeColor: Colors.orange,
+                        onChanged: (val) {
+                          setDialogState(() => _isFineAutoPilotEnabled = val);
+                        },
+                      ),
+                      if (_isFineAutoPilotEnabled == true) ...[
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                          child: DropdownButtonFormField<int>(
+                            value: _fineAutoPilotDay,
+                            decoration: const InputDecoration(
+                              labelText: 'Fine Apply Day',
+                              border: OutlineInputBorder(),
+                              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            ),
+                            items: List.generate(31, (i) => i + 1).map((day) {
+                              return DropdownMenuItem(value: day, child: Text("Day $day"));
+                            }).toList(),
+                            onChanged: (val) {
+                              if (val != null) setDialogState(() => _fineAutoPilotDay = val);
+                            },
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: TextField(
+                            controller: fineAmountController,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(
+                              labelText: 'Fine Amount (₹)',
+                              border: OutlineInputBorder(),
+                              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Settings will be applied for all classes automatically.',
+                  style: TextStyle(fontSize: 10, color: Colors.blueGrey, fontStyle: FontStyle.italic),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Cancel', style: TextStyle(color: Colors.grey[600])),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final amount = double.tryParse(fineAmountController.text) ?? 0;
+                final schoolService = Provider.of<SchoolInfoService>(context, listen: false);
+                await schoolService.updateSchoolInfo({
+                  'feeAutoPilotEnabled': _isAutoPilotEnabled,
+                  'feeAutoPilotDay': _autoPilotDay,
+                  'fineAutoPilotEnabled': _isFineAutoPilotEnabled,
+                  'fineAutoPilotDay': _fineAutoPilotDay,
+                  'fineAutoPilotAmount': amount,
+                });
+                if (mounted) setState(() {
+                  _fineAmount = amount;
+                });
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('All Auto Pilot settings saved'), backgroundColor: Colors.indigo),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.indigo,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text('Save Settings'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _ResponsiveStudentView extends StatelessWidget {
@@ -527,30 +811,35 @@ class _ResponsiveStudentView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<List<Map<String, dynamic>>>(
-      stream: Provider.of<UserService>(context).getStudentsByClass(classId),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-        final students = snapshot.data!;
-
-        if (students.isEmpty) {
-          return const Center(child: Text("No students in this class", style: TextStyle(color: Colors.grey)));
-        }
-
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            if (constraints.maxWidth > 900) {
-              return _buildExcelView(context, students, constraints.maxWidth);
-            } else {
-              return _buildListView(students);
+    return StreamBuilder<List<BusDestination>>(
+      stream: Provider.of<BusService>(context, listen: false).getDestinations(),
+      builder: (context, destSnapshot) {
+        final destinations = destSnapshot.data ?? [];
+        
+        return StreamBuilder<List<Map<String, dynamic>>>(
+          stream: Provider.of<UserService>(context).getStudentsByClass(classId),
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+            final students = snapshot.data!;
+            if (students.isEmpty) {
+              return const Center(child: Text("No students in this class", style: TextStyle(color: Colors.grey)));
             }
+            return LayoutBuilder(
+              builder: (context, constraints) {
+                if (constraints.maxWidth > 900) {
+                  return _buildExcelView(context, students, destinations, constraints.maxWidth);
+                } else {
+                  return _buildListView(students, destinations);
+                }
+              },
+            );
           },
         );
       },
     );
   }
 
-  Widget _buildExcelView(BuildContext context, List<Map<String, dynamic>> students, double availableWidth) {
+  Widget _buildExcelView(BuildContext context, List<Map<String, dynamic>> students, List<BusDestination> destinations, double availableWidth) {
     return SingleChildScrollView(
       scrollDirection: Axis.vertical,
       child: SingleChildScrollView(
@@ -578,7 +867,18 @@ class _ResponsiveStudentView extends StatelessWidget {
               // Calculate dynamic total
               double total = 0.0;
               if (feeConfig['Coaching Fee'] != false) total += classModel.coachingFee;
-              if (feeConfig['Bus Fee'] != false) total += classModel.busFee;
+              
+              double currentStudentBusFee = classModel.busFee;
+              if (feeConfig['Bus Fee'] != false) {
+                final busStopId = s['busStopId']?.toString();
+                final stop = destinations.firstWhere(
+                  (d) => d.id == busStopId,
+                  orElse: () => BusDestination(id: '', name: '', lat: 0, lng: 0, fee: classModel.busFee),
+                );
+                currentStudentBusFee = stop.fee;
+                total += currentStudentBusFee;
+              }
+              
               if (feeConfig['Hostel Fee'] != false) total += classModel.hostelFee;
               
               classModel.otherFees.forEach((key, value) {
@@ -603,7 +903,7 @@ class _ResponsiveStudentView extends StatelessWidget {
                 // Coaching Toggle
                 _buildToggleCell(context, userId, 'Coaching Fee', classModel.coachingFee, feeConfig['Coaching Fee'] != false),
                 // Bus Toggle
-                _buildToggleCell(context, userId, 'Bus Fee', classModel.busFee, feeConfig['Bus Fee'] != false),
+                _buildToggleCell(context, userId, 'Bus Fee', currentStudentBusFee, feeConfig['Bus Fee'] != false),
                 // Hostel Toggle
                 _buildToggleCell(context, userId, 'Hostel Fee', classModel.hostelFee, feeConfig['Hostel Fee'] != false),
                 
@@ -715,7 +1015,7 @@ class _ResponsiveStudentView extends StatelessWidget {
      );
   }
 
-  Widget _buildListView(List<Map<String, dynamic>> students) {
+  Widget _buildListView(List<Map<String, dynamic>> students, List<BusDestination> destinations) {
     return ListView.builder(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
       itemCount: students.length,
@@ -727,7 +1027,18 @@ class _ResponsiveStudentView extends StatelessWidget {
         // Calculate dynamic total for Mobile View
         double monthlyTotal = 0.0;
         if (feeConfig['Coaching Fee'] != false) monthlyTotal += classModel.coachingFee;
-        if (feeConfig['Bus Fee'] != false) monthlyTotal += classModel.busFee;
+        
+        double studentBusFee = classModel.busFee;
+        if (feeConfig['Bus Fee'] != false) {
+          final busStopId = s['busStopId']?.toString();
+          final stop = destinations.firstWhere(
+            (d) => d.id == busStopId,
+            orElse: () => BusDestination(id: '', name: '', lat: 0, lng: 0, fee: classModel.busFee),
+          );
+          studentBusFee = stop.fee;
+          monthlyTotal += studentBusFee;
+        }
+        
         if (feeConfig['Hostel Fee'] != false) monthlyTotal += classModel.hostelFee;
         
         classModel.otherFees.forEach((key, value) {
@@ -755,7 +1066,7 @@ class _ResponsiveStudentView extends StatelessWidget {
                 child: Column(
                   children: [
                     _detailRow('Coaching Fee', '₹${classModel.coachingFee.toInt()}'),
-                    _detailRow('Bus Fee', '₹${classModel.busFee.toInt()}'),
+                    _detailRow('Bus Fee', '₹${studentBusFee.toInt()}'),
                     _detailRow('Hostel Fee', '₹${classModel.hostelFee.toInt()}'),
                     ...classModel.otherFees.entries.map((e) => _detailRow(e.key, '₹${e.value.toInt()}')),
                     const Divider(),

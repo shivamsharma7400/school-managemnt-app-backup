@@ -5,12 +5,14 @@ class BusDestination {
   final String name;
   final double lat;
   final double lng;
+  final double fee;
 
   BusDestination({
     required this.id,
     required this.name,
     required this.lat,
     required this.lng,
+    required this.fee,
   });
 
   factory BusDestination.fromFirestore(DocumentSnapshot doc) {
@@ -20,6 +22,7 @@ class BusDestination {
       name: data['name'] ?? '',
       lat: (data['lat'] as num?)?.toDouble() ?? 0.0,
       lng: (data['lng'] as num?)?.toDouble() ?? 0.0,
+      fee: (data['fee'] as num?)?.toDouble() ?? 0.0,
     );
   }
 
@@ -28,6 +31,7 @@ class BusDestination {
       'name': name,
       'lat': lat,
       'lng': lng,
+      'fee': fee,
     };
   }
 }

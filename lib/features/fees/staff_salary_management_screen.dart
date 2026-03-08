@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 import '../../data/services/user_service.dart';
 import '../../data/services/school_info_service.dart';
 
@@ -234,8 +235,101 @@ class _TeacherSalaryCard extends StatelessWidget {
                 }, isRed: true),
               ],
             ),
+            if (due > 0) ...[
+              SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () => _showPaymentDialog(context, teacher['id'], teacher['name'] ?? 'Staff', due),
+                  icon: Icon(Icons.payment, size: 18),
+                  label: Text("Record Payment (Pay)"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.indigo,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
+      ),
+    );
+  }
+
+  void _showPaymentDialog(BuildContext context, String uid, String name, double due) {
+    final controller = TextEditingController(text: due.toStringAsFixed(0));
+    String method = "Cash";
+    String month = DateFormat('MMMM').format(DateTime.now());
+    
+    final List<String> months = [
+      "January", "February", "March", "April", "May", "June", 
+      "July", "August", "September", "October", "November", "December"
+    ];
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Text('Pay Salary: $name'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: controller,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: "Payment Amount",
+                      prefixText: '₹ ',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                  SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    value: month,
+                    decoration: InputDecoration(
+                      labelText: "Salary Month",
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    items: months.map((m) => DropdownMenuItem(value: m, child: Text(m))).toList(),
+                    onChanged: (val) => setState(() => month = val!),
+                  ),
+                  SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    value: method,
+                    decoration: InputDecoration(
+                      labelText: "Payment Method",
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    items: ["Cash", "Bank Transfer", "UPI", "Cheque"].map((m) => DropdownMenuItem(value: m, child: Text(m))).toList(),
+                    onChanged: (val) => setState(() => method = val!),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancel')),
+              ElevatedButton(
+                onPressed: () async {
+                  final amount = double.tryParse(controller.text) ?? 0;
+                  if (amount <= 0) return;
+                  Navigator.pop(context);
+                  try {
+                    await Provider.of<UserService>(context, listen: false).recordStaffPayment(uid, amount, method, month);
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Payment recorded for $name!')));
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                  }
+                },
+                child: Text('Confirm Payment'),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
