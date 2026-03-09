@@ -8,6 +8,8 @@ import 'package:uuid/uuid.dart';
 import 'package:intl/intl.dart';
 
 class ComplaintBoxScreen extends StatefulWidget {
+  const ComplaintBoxScreen({super.key});
+
   @override
   _ComplaintBoxScreenState createState() => _ComplaintBoxScreenState();
 }
@@ -274,9 +276,6 @@ class _ComplaintBoxScreenState extends State<ComplaintBoxScreen> with SingleTick
           SizedBox(height: 32),
           ElevatedButton(
             onPressed: _isSubmitting ? null : _submitComplaint,
-            child: _isSubmitting 
-                ? SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                : Text('Submit Complaint', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.purple,
               foregroundColor: Colors.white,
@@ -284,6 +283,9 @@ class _ComplaintBoxScreenState extends State<ComplaintBoxScreen> with SingleTick
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               elevation: 4,
             ),
+            child: _isSubmitting 
+                ? SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                : Text('Submit Complaint', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           ),
         ],
       ),

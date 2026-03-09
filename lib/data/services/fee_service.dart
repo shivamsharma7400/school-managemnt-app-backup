@@ -1,6 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
-import 'package:intl/intl.dart';
 import '../models/fee_record.dart';
 
 class FeeService extends ChangeNotifier {
@@ -415,7 +414,7 @@ class FeeService extends ChangeNotifier {
 
       for (var doc in studentsSnapshot.docs) {
         final userId = doc.id;
-        final data = doc.data() as Map<String, dynamic>;
+        final data = doc.data();
         final studentName = data['name'] ?? 'Unknown';
         final feeConfig = data['feeConfig'] as Map<String, dynamic>? ?? {};
 

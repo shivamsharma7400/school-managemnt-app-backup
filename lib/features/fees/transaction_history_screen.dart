@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -8,6 +7,8 @@ import '../../core/constants/app_constants.dart';
 import '../../data/services/receipt_service.dart';
 
 class TransactionHistoryScreen extends StatefulWidget {
+  const TransactionHistoryScreen({super.key});
+
   @override
   _TransactionHistoryScreenState createState() => _TransactionHistoryScreenState();
 }
@@ -156,7 +157,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildMonthHeader(monthKey),
-            ...items.map((t) => _buildTransactionCard(t)).toList(),
+            ...items.map((t) => _buildTransactionCard(t)),
           ],
         );
       },
@@ -258,7 +259,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                 child: SizedBox(
                   width: double.infinity,
                   child: DataTable(
-                    headingRowColor: MaterialStateProperty.all(Colors.grey[50]),
+                    headingRowColor: WidgetStateProperty.all(Colors.grey[50]),
                     columns: const [
                       DataColumn(label: Text('Date & Time')),
                       DataColumn(label: Text('Student Name')),

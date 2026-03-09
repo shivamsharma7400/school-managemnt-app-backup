@@ -4,16 +4,12 @@ import '../../data/services/auth_service.dart';
 import '../../data/services/user_service.dart';
 import '../common/widgets/modern_layout.dart';
 import '../common/widgets/dashboard_widgets.dart';
-import 'package:vps/core/constants/app_constants.dart';
 // Feature screens
 import '../communication/announcement_screen.dart';
 import '../fees/fee_management_screen.dart';
 import '../principal/user_management_screen.dart';
 import '../attendance/mark_attendance_screen.dart'; 
 import '../principal/routine_management_screen.dart';
-import '../fees/staff_salary_management_screen.dart';
-import '../transport/bus_management_screen.dart';
-import '../data_center/data_center_screen.dart';
 import '../principal/leave/leave_approval_screen.dart';
 import '../results/principal_result_view_screen.dart';
 import '../principal/principal_complaint_screen.dart';
@@ -40,6 +36,8 @@ class DashboardData {
 }
 
 class ManagementDashboard extends StatelessWidget {
+  const ManagementDashboard({super.key});
+
   @override
   Widget build(BuildContext context) {
     return ModernLayout(
@@ -113,6 +111,10 @@ class ManagementDashboard extends StatelessWidget {
     final userService = Provider.of<UserService>(context);
     final leaveService = Provider.of<LeaveService>(context);
     final complaintService = Provider.of<ComplaintService>(context);
+    final authService = Provider.of<AuthService>(context);
+
+    final permissions = authService.currentUserData?['permissions'] as Map<String, dynamic>? ?? {};
+    bool hasPerm(String key) => permissions[key] ?? true;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -130,7 +132,7 @@ class ManagementDashboard extends StatelessWidget {
             complaintService.getPendingComplaintsCount(),
             Provider.of<StrategicPlanningService>(context, listen: false).getActiveTasks(),
             (a, b, c, d) {
-              final tasks = d as List<StrategicTask>;
+              final tasks = d;
               final today = DateTime.now();
               final todaysTasks = tasks.where((t) {
                 return t.date.year == today.year && 
@@ -177,9 +179,9 @@ class ManagementDashboard extends StatelessWidget {
               );
             }
 
-            return Column(
+             return Column(
               children: [
-                if (todaysTasks.isNotEmpty)
+                if (todaysTasks.isNotEmpty && hasPerm('scheduled_work'))
                   Padding(
                     padding: const EdgeInsets.only(bottom: 12.0),
                     child: ActionCard(
@@ -190,7 +192,7 @@ class ManagementDashboard extends StatelessWidget {
                       onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => StrategicPlanningScreen())),
                     ),
                   ),
-                if (pendingUsers > 0)
+                if (pendingUsers > 0 && hasPerm('user_management'))
                   Padding(
                     padding: const EdgeInsets.only(bottom: 12.0),
                     child: ActionCard(
@@ -201,7 +203,7 @@ class ManagementDashboard extends StatelessWidget {
                       onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => UserManagementScreen())),
                     ),
                   ),
-                if (pendingLeaves > 0)
+                if (pendingLeaves > 0 && hasPerm('leave_requests'))
                   Padding(
                     padding: const EdgeInsets.only(bottom: 12.0),
                     child: ActionCard(
@@ -212,7 +214,7 @@ class ManagementDashboard extends StatelessWidget {
                       onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => LeaveApprovalScreen())),
                     ),
                   ),
-                 if (pendingComplaints > 0)
+                 if (pendingComplaints > 0 && hasPerm('complaint_box'))
                   Padding(
                     padding: const EdgeInsets.only(bottom: 12.0),
                     child: ActionCard(
@@ -241,13 +243,20 @@ class ManagementDashboard extends StatelessWidget {
           mainAxisSpacing: 16,
           childAspectRatio: 2.5,
           children: [
-            _buildModuleItem(context, 'Attendance', Icons.fact_check, Colors.blue, () => Navigator.push(context, MaterialPageRoute(builder: (_) => MarkAttendanceScreen()))),
-            _buildModuleItem(context, 'Fee Mgmt', Icons.attach_money, Colors.green, () => Navigator.push(context, MaterialPageRoute(builder: (_) => FeeManagementScreen()))),
-            _buildModuleItem(context, 'Exams', Icons.assignment, Colors.orange, () => Navigator.push(context, MaterialPageRoute(builder: (_) => PrincipalResultViewScreen()))),
-            _buildModuleItem(context, 'Exam Setup', Icons.settings_applications, Colors.indigo, () => Navigator.push(context, MaterialPageRoute(builder: (_) => ExamSetupScreen()))),
-            _buildModuleItem(context, 'Routine', Icons.schedule, Colors.teal, () => Navigator.push(context, MaterialPageRoute(builder: (_) => RoutineManagementScreen()))),
-            _buildModuleItem(context, 'Announcements', Icons.campaign, Colors.pink, () => Navigator.push(context, MaterialPageRoute(builder: (_) => AnnouncementScreen()))),
-            _buildModuleItem(context, 'Complaint Box', Icons.inbox, Colors.redAccent, () => Navigator.push(context, MaterialPageRoute(builder: (_) => PrincipalComplaintListScreen()))),
+            if (hasPerm('attendance'))
+              _buildModuleItem(context, 'Attendance', Icons.fact_check, Colors.blue, () => Navigator.push(context, MaterialPageRoute(builder: (_) => MarkAttendanceScreen()))),
+            if (hasPerm('fee_mgmt'))
+              _buildModuleItem(context, 'Fee Mgmt', Icons.attach_money, Colors.green, () => Navigator.push(context, MaterialPageRoute(builder: (_) => FeeManagementScreen()))),
+            if (hasPerm('exams'))
+              _buildModuleItem(context, 'Exams', Icons.assignment, Colors.orange, () => Navigator.push(context, MaterialPageRoute(builder: (_) => PrincipalResultViewScreen()))),
+            if (hasPerm('exam_setup'))
+              _buildModuleItem(context, 'Exam Setup', Icons.settings_applications, Colors.indigo, () => Navigator.push(context, MaterialPageRoute(builder: (_) => ExamSetupScreen()))),
+            if (hasPerm('routine'))
+              _buildModuleItem(context, 'Routine', Icons.schedule, Colors.teal, () => Navigator.push(context, MaterialPageRoute(builder: (_) => RoutineManagementScreen()))),
+            if (hasPerm('announcements'))
+              _buildModuleItem(context, 'Announcements', Icons.campaign, Colors.pink, () => Navigator.push(context, MaterialPageRoute(builder: (_) => AnnouncementScreen()))),
+            if (hasPerm('complaint_box'))
+              _buildModuleItem(context, 'Complaint Box', Icons.inbox, Colors.redAccent, () => Navigator.push(context, MaterialPageRoute(builder: (_) => PrincipalComplaintListScreen()))),
           ],
         ),
       ],

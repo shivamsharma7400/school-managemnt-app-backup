@@ -4,10 +4,11 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import '../../../data/services/ai_service.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/student_query_service.dart';
-import '../../../data/services/school_config_service.dart';
 import '../../../core/constants/app_constants.dart'; // Ensure logo path if available
 
 class ExploreSchoolScreen extends StatefulWidget {
+  const ExploreSchoolScreen({super.key});
+
   @override
   _ExploreSchoolScreenState createState() => _ExploreSchoolScreenState();
 }
@@ -27,12 +28,11 @@ class _ExploreSchoolScreenState extends State<ExploreSchoolScreen> {
 
   Future<void> _startChat() async {
     final aiService = Provider.of<AIService>(context, listen: false);
-    final config = Provider.of<SchoolConfigService>(context, listen: false);
     _chatSession = await aiService.startChatSession();
     setState(() {
       _messages.add({
         'role': 'ai',
-        'text': "Hello! I am **${config.aiAgentName}**. Ask me anything about the school!"
+        'text': "Hello! I am **${AppStrings.aiAgentName}**. Ask me anything about the school!"
       });
     });
   }
@@ -139,7 +139,7 @@ class _ExploreSchoolScreenState extends State<ExploreSchoolScreen> {
                      child: Icon(Icons.psychology, size: 16, color: Colors.white),
                   ),
                   SizedBox(width: 8),
-                  Text("${Provider.of<SchoolConfigService>(context, listen: false).aiAgentName} is typing...", style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic)),
+                  Text("${AppStrings.aiAgentName} is typing...", style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic)),
                 ],
               ),
             ),
@@ -179,7 +179,7 @@ class _ExploreSchoolScreenState extends State<ExploreSchoolScreen> {
                    children: [
                       Icon(Icons.psychology, size: 14, color: Colors.blue[800]),
                       SizedBox(width: 4),
-                      Text(Provider.of<SchoolConfigService>(context, listen: false).aiAgentName, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blue[900])),
+                      Text(AppStrings.aiAgentName, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blue[900])),
                    ],
                 ),
               ),
@@ -230,8 +230,8 @@ class _ExploreSchoolScreenState extends State<ExploreSchoolScreen> {
           FloatingActionButton(
             mini: true,
             backgroundColor: Colors.blue[800],
-            child: Icon(Icons.send_rounded, color: Colors.white, size: 20),
-            onPressed: isTyping ? null : _askAI, // Disable if typing
+            onPressed: isTyping ? null : _askAI,
+            child: Icon(Icons.send_rounded, color: Colors.white, size: 20), // Disable if typing
           ),
         ],
       ),

@@ -6,6 +6,8 @@ import '../../data/services/user_service.dart';
 import '../../data/services/class_service.dart';
 
 class StudentSearchScreen extends StatefulWidget {
+  const StudentSearchScreen({super.key});
+
   @override
   _StudentSearchScreenState createState() => _StudentSearchScreenState();
 }

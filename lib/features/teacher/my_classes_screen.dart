@@ -6,6 +6,8 @@ import '../../data/models/class_model.dart';
 import '../common/widgets/class_dropdown.dart';
 
 class MyClassesScreen extends StatelessWidget {
+  const MyClassesScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
     final teacherId = Provider.of<AuthService>(context, listen: false).user?.uid;
@@ -41,12 +43,12 @@ class MyClassesScreen extends StatelessWidget {
         },
       ),
       floatingActionButton: FloatingActionButton(
-        child: Icon(Icons.add),
         tooltip: "Create Class (Demo)",
         onPressed: () {
           // Quick helper to create data for testing
           _showAddClassDialog(context, teacherId);
         },
+        child: Icon(Icons.add),
       ),
     );
   }

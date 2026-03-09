@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
-import 'onboarding_screen.dart';
 import '../../main.dart'; // For AuthWrapper
-import 'package:provider/provider.dart';
 import 'package:vps/core/constants/app_constants.dart'; // Import AppStrings
-import 'package:vps/data/services/school_config_service.dart';
 
 class SplashScreen extends StatefulWidget {
+  const SplashScreen({super.key});
+
   @override
   _SplashScreenState createState() => _SplashScreenState();
 }
@@ -40,9 +39,6 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
   @override
   Widget build(BuildContext context) {
-    // We can listen here, or just fetch once since splash is short lived.
-    // However, listening ensures we get the latest if cached.
-    final config = Provider.of<SchoolConfigService>(context);
 
     return Scaffold(
       backgroundColor: Colors.blueAccent, // Use your primary color
@@ -66,7 +62,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
               SizedBox(height: 20),
               // App Name
               Text(
-                config.schoolName,
+                AppStrings.appName,
                 style: TextStyle(
                   fontSize: 32,
                   fontWeight: FontWeight.bold,

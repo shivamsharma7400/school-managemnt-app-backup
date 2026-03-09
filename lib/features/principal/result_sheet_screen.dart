@@ -11,7 +11,7 @@ import '../../data/services/user_service.dart';
 class ResultSheetScreen extends StatefulWidget {
   final ScheduledExam exam;
 
-  const ResultSheetScreen({Key? key, required this.exam}) : super(key: key);
+  const ResultSheetScreen({super.key, required this.exam});
 
   @override
   _ResultSheetScreenState createState() => _ResultSheetScreenState();
@@ -25,7 +25,7 @@ class _ResultSheetScreenState extends State<ResultSheetScreen> with TickerProvid
   bool _isSaving = false;
   
   // Storage for marks: {classId: {studentId: {subject: marks}}}
-  Map<String, Map<String, Map<String, String>>> _marksData = {};
+  final Map<String, Map<String, Map<String, String>>> _marksData = {};
   
   @override
   void initState() {
@@ -55,7 +55,12 @@ class _ResultSheetScreenState extends State<ResultSheetScreen> with TickerProvid
 
       // 2. Fetch Classes
       _classes = await Provider.of<ClassService>(context, listen: false).fetchAllClasses();
-      _classes.sort((a, b) => a.name.compareTo(b.name));
+      _classes.sort((a, b) {
+        final indexA = AppConstants.schoolClasses.indexOf(a.name);
+        final indexB = AppConstants.schoolClasses.indexOf(b.name);
+        if (indexA != -1 && indexB != -1) return indexA.compareTo(indexB);
+        return a.name.compareTo(b.name);
+      });
 
       // 3. Initialize Tab Controller
       if (_classes.isNotEmpty) {
@@ -179,7 +184,7 @@ class _ResultSheetScreenState extends State<ResultSheetScreen> with TickerProvid
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(12),
                         child: DataTable(
-                          headingRowColor: MaterialStateProperty.all(AppColors.modernPrimary),
+                          headingRowColor: WidgetStateProperty.all(AppColors.modernPrimary),
                           dataRowHeight: 60,
                           horizontalMargin: 20,
                           columns: [

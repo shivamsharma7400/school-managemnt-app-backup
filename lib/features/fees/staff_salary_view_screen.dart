@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart'; // Add this import
-import 'package:intl/intl.dart';
 import '../../data/services/auth_service.dart';
 import '../../data/services/user_service.dart';
 import '../../data/services/school_info_service.dart';
 import '../../data/services/salary_pdf_service.dart';
 
 class StaffSalaryViewScreen extends StatelessWidget {
+  const StaffSalaryViewScreen({super.key});
+
+  @override
   Widget build(BuildContext context) {
     final user = Provider.of<AuthService>(context).user;
     if (user == null) return Scaffold(body: Center(child: Text("Please login")));

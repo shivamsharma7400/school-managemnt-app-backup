@@ -1,7 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vps/data/models/attendance_record.dart';
 import 'package:vps/data/models/class_model.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 void main() {
   group('Data Model Robustness Tests', () {

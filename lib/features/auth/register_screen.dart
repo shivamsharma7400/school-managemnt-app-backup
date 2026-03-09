@@ -5,6 +5,8 @@ import 'package:vps/data/services/auth_service.dart';
 import 'package:vps/core/constants/app_constants.dart';
 
 class RegisterScreen extends StatefulWidget {
+  const RegisterScreen({super.key});
+
   @override
   _RegisterScreenState createState() => _RegisterScreenState();
 }
@@ -244,7 +246,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     ),
                                     SizedBox(height: 24),
                                     Flexible(
-                                      child: Container(
+                                      child: SizedBox(
                                         height: 500, // Fixed height for TabBarView to work inside scrollable
                                         child: TabBarView(
                                           children: [
@@ -313,7 +315,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               SizedBox(width: 12),
               Expanded(
                 child: DropdownButtonFormField<String>(
-                  value: _selectedGender,
+                  initialValue: _selectedGender,
                   style: GoogleFonts.outfit(color: Colors.black),
                   decoration: InputDecoration(
                     labelText: 'Gender',

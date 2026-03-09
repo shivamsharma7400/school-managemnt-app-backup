@@ -9,7 +9,7 @@ import '../../data/services/user_service.dart';
 class TeachersSetupScreen extends StatefulWidget {
   final ScheduledExam exam;
 
-  const TeachersSetupScreen({Key? key, required this.exam}) : super(key: key);
+  const TeachersSetupScreen({super.key, required this.exam});
 
   @override
   _TeachersSetupScreenState createState() => _TeachersSetupScreenState();
@@ -222,7 +222,7 @@ class _TeachersSetupScreenState extends State<TeachersSetupScreen> {
                     ],
                   ),
                 );
-              }).toList(),
+              }),
             ],
           ),
         ),

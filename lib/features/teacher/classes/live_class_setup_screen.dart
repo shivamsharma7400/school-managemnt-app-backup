@@ -7,6 +7,8 @@ import '../../../data/services/youtube_service.dart';
 import '../../../data/models/online_class_model.dart';
 
 class LiveClassSetupScreen extends StatefulWidget {
+  const LiveClassSetupScreen({super.key});
+
   @override
   _LiveClassSetupScreenState createState() => _LiveClassSetupScreenState();
 }
@@ -65,7 +67,7 @@ class _LiveClassSetupScreenState extends State<LiveClassSetupScreen> {
          _videoIdController.text = id!; // Replace URL with clean ID
          _title = details['title'];
          _description = details['description'];
-         _videoId = id!;
+         _videoId = id;
       });
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Video Details Fetched!')));
     } else {

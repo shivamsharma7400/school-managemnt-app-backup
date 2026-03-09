@@ -4,7 +4,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import '../../data/services/notification_service.dart';
 import '../../data/services/auth_service.dart';
-import '../../core/constants/app_constants.dart';
 
 class SubjectDetailScreen extends StatefulWidget {
   final String syllabusId;
@@ -13,12 +12,12 @@ class SubjectDetailScreen extends StatefulWidget {
   final bool isReadOnly;
 
   const SubjectDetailScreen({
-    Key? key,
+    super.key,
     required this.syllabusId,
     required this.subjectName,
     required this.className,
     this.isReadOnly = false,
-  }) : super(key: key);
+  });
 
   @override
   _SubjectDetailScreenState createState() => _SubjectDetailScreenState();

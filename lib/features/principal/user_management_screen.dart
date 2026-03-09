@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:vps/core/constants/app_constants.dart';
@@ -12,6 +11,8 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 
 class UserManagementScreen extends StatefulWidget {
+  const UserManagementScreen({super.key});
+
   @override
   State<UserManagementScreen> createState() => _UserManagementScreenState();
 }
@@ -35,7 +36,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         builder: (context, snapshot) {
           final users = snapshot.data ?? [];
           return DefaultTabController(
-            length: 7,
+            length: 9, 
             child: Column(
               children: [
                 _buildActionHeader(context),
@@ -48,6 +49,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                       _UserList(roleFilter: 'pending', requestedRoleFilter: 'staff', searchQuery: _searchQuery, preFetchedUsers: users),
                       _UserList(roleFilter: 'student', searchQuery: _searchQuery, preFetchedUsers: users),
                       _UserList(roleFilter: 'teacher', searchQuery: _searchQuery, preFetchedUsers: users),
+                      _UserList(roleFilter: 'management', searchQuery: _searchQuery, preFetchedUsers: users),
+                      _UserList(roleFilter: 'driver', searchQuery: _searchQuery, preFetchedUsers: users),
                       _UserList(roleFilter: 'staff', searchQuery: _searchQuery, preFetchedUsers: users),
                       _UserList(roleFilter: 'passed_out', searchQuery: _searchQuery, preFetchedUsers: users),
                     ],
@@ -89,6 +92,12 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
               ),
             ),
           ),
+          const SizedBox(width: 8),
+          IconButton(
+            icon: Icon(Icons.sync_rounded, color: Colors.orange.shade700),
+            onPressed: () => _showMigrationDialog(context),
+            tooltip: 'Sync Database',
+          ),
         ],
       ),
     );
@@ -100,9 +109,6 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         final r = u['role'];
         if (role == 'pending') {
           return r == 'pending' && (u['requestedRole'] ?? 'student') == requestedRole;
-        }
-        if (role == 'staff') {
-          return r != 'student' && r != 'teacher' && r != 'principal' && r != 'pending' && r != 'passed_out' && r != 'admin';
         }
         return r == role;
       }).length;
@@ -133,7 +139,9 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
           _buildTab('Pending Staff', Icons.badge_outlined, getCount('pending', requestedRole: 'staff'), Colors.brown),
           _buildTab('Students', Icons.groups_outlined, getCount('student'), Colors.blue),
           _buildTab('Teachers', Icons.record_voice_over_outlined, getCount('teacher'), Colors.green),
-          _buildTab('Staff', Icons.engineering_outlined, getCount('staff'), Colors.teal),
+          _buildTab('Management', Icons.admin_panel_settings_outlined, getCount('management'), Colors.indigo),
+          _buildTab('Drivers', Icons.directions_bus_outlined, getCount('driver'), Colors.cyan),
+          _buildTab('Gen Staff', Icons.engineering_outlined, getCount('staff'), Colors.teal),
           _buildTab('Passed Out', Icons.history_edu_outlined, getCount('passed_out'), Colors.grey),
         ],
       ),
@@ -206,8 +214,6 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     }
   }
 
-  // --- Logic helpers copied from original with UI enhancements ---
-
   void _showApprovalDialog(BuildContext context, Map<String, dynamic> user) {
     final requestedRole = (user['requestedRole'] ?? 'student').toString().toLowerCase();
 
@@ -269,7 +275,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
 
   void _showStudentClassDialog(BuildContext context, Map<String, dynamic> user) {
     String? selectedClass;
-    final _formKey = GlobalKey<FormState>();
+    final formKey = GlobalKey<FormState>();
 
     showDialog(
       context: context,
@@ -277,7 +283,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text("Assign Class"),
         content: Form(
-          key: _formKey,
+          key: formKey,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -295,7 +301,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
           TextButton(onPressed: () => Navigator.pop(context), child: Text("Cancel")),
           ElevatedButton(
             onPressed: () {
-              if (_formKey.currentState!.validate()) {
+              if (formKey.currentState!.validate()) {
                 Provider.of<UserService>(context, listen: false)
                     .updateUserRole(user['id'], 'student', classId: selectedClass);
                 Navigator.pop(context);
@@ -372,14 +378,14 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   }
 
   void _showUrlInputDialog(BuildContext context, String userId) {
-    final _urlController = TextEditingController();
+    final urlController = TextEditingController();
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text('Profile Photo URL'),
         content: TextField(
-          controller: _urlController,
+          controller: urlController,
           decoration: InputDecoration(
             labelText: 'Direct Drive Link',
             hintText: 'https://drive.google.com/...',
@@ -390,7 +396,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
           TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancel')),
           ElevatedButton(
             onPressed: () {
-              final String? directUrl = DriveHelper.getDirectDriveUrl(_urlController.text);
+              final String? directUrl = DriveHelper.getDirectDriveUrl(urlController.text);
               if (directUrl != null && directUrl.isNotEmpty) {
                 Provider.of<UserService>(context, listen: false).updateProfile(userId, {'photoUrl': directUrl});
                 Navigator.pop(context);
@@ -418,6 +424,13 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e'), backgroundColor: Colors.red));
       }
     }
+  }
+
+  void _showPermissionsDialog(BuildContext context, Map<String, dynamic> user) {
+    showDialog(
+      context: context,
+      builder: (context) => _PermissionsDialog(user: user),
+    );
   }
 
   void _showPasswordDialog(BuildContext context, Map<String, dynamic> user) async {
@@ -589,8 +602,8 @@ class _UserList extends StatelessWidget {
           final id = (u['admNo'] ?? u['teacherId'] ?? u['staffId'] ?? '').toString().toLowerCase();
           
           final matchesSearch = name.contains(searchQuery) || 
-                               email.contains(searchQuery) || 
-                               id.contains(searchQuery);
+                                email.contains(searchQuery) || 
+                                id.contains(searchQuery);
           
           if (!matchesSearch) return false;
 
@@ -599,9 +612,6 @@ class _UserList extends StatelessWidget {
             if (r != 'pending') return false;
             String reqRole = (u['requestedRole'] ?? 'student').toString().toLowerCase();
             return reqRole == requestedRoleFilter;
-          }
-          if (roleFilter == 'staff') {
-             return r == 'staff' || r == 'driver' || r == 'management';
           }
           return r == roleFilter;
         }).toList();
@@ -633,6 +643,8 @@ class _UserList extends StatelessWidget {
       String key;
       if (roleFilter == 'student') {
         key = user['classId']?.toString() ?? 'Unassigned';
+        // Only show groups for classes that are in the master list OR Unassigned
+        if (key != 'Unassigned' && !AppConstants.schoolClasses.contains(key)) continue;
         if (key != 'Unassigned') key = 'Class $key';
       } else {
         key = user['passedOutSession']?.toString() ?? 'Unknown Session';
@@ -643,6 +655,18 @@ class _UserList extends StatelessWidget {
 
     final sortedKeys = grouped.keys.toList()..sort((a, b) {
       if (roleFilter == 'passed_out') return b.compareTo(a);
+      
+      // Sort students based on AppConstants.schoolClasses order
+      final classA = a.replaceFirst('Class ', '');
+      final classB = b.replaceFirst('Class ', '');
+      
+      final indexA = AppConstants.schoolClasses.indexOf(classA);
+      final indexB = AppConstants.schoolClasses.indexOf(classB);
+      
+      if (indexA != -1 && indexB != -1) return indexA.compareTo(indexB);
+      if (indexA != -1) return -1;
+      if (indexB != -1) return 1;
+      
       return a.compareTo(b);
     });
 
@@ -694,7 +718,7 @@ class UserCard extends StatelessWidget {
   final Map<String, dynamic> user;
   final String roleFilter;
 
-  const UserCard({Key? key, required this.user, required this.roleFilter}) : super(key: key);
+  const UserCard({super.key, required this.user, required this.roleFilter});
 
   @override
   Widget build(BuildContext context) {
@@ -790,7 +814,19 @@ class UserCard extends StatelessWidget {
                       },
                       tooltip: 'Reject',
                     ),
-                  ] else
+                  ] else ...[
+                    if (roleFilter != 'student') ...[
+                      _CircleToolButton(
+                        icon: Icons.security,
+                        color: Colors.indigo,
+                        onTap: () {
+                          final state = context.findAncestorStateOfType<_UserManagementScreenState>();
+                          if (state != null) state._showPermissionsDialog(context, user);
+                        },
+                        tooltip: 'Permissions',
+                      ),
+                      const SizedBox(width: 8),
+                    ],
                     _CircleToolButton(
                       icon: Icons.delete_outline,
                       color: Colors.red,
@@ -798,8 +834,9 @@ class UserCard extends StatelessWidget {
                         final state = context.findAncestorStateOfType<_UserManagementScreenState>();
                         if (state != null) state._confirmDelete(context, user);
                       },
-                      tooltip: 'Delete',
+                      tooltip: 'Reject',
                     ),
+                  ],
                 ],
               ),
             ],
@@ -938,6 +975,182 @@ class _RoleOption extends StatelessWidget {
             ),
             const SizedBox(width: 16),
             Text(label, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PermissionsDialog extends StatefulWidget {
+  final Map<String, dynamic> user;
+  const _PermissionsDialog({required this.user});
+
+  @override
+  State<_PermissionsDialog> createState() => _PermissionsDialogState();
+}
+
+class _PermissionsDialogState extends State<_PermissionsDialog> {
+  late Map<String, dynamic> _permissions;
+
+  @override
+  void initState() {
+    super.initState();
+    _permissions = Map<String, dynamic>.from(widget.user['permissions'] ?? {});
+  }
+
+  List<Map<String, dynamic>> _getModulesForRole(String role) {
+    if (role == 'teacher') {
+      return [
+        {'key': 'class_details', 'label': 'Class Details', 'icon': Icons.class_outlined},
+        {'key': 'attendance', 'label': 'Attendance', 'icon': Icons.how_to_reg},
+        {'key': 'homework', 'label': 'Homework', 'icon': Icons.menu_book},
+        {'key': 'announcements', 'label': 'Announcements', 'icon': Icons.campaign},
+        {'key': 'contact_parents', 'label': 'Contact Parents', 'icon': Icons.contact_phone},
+        {'key': 'salary_payment', 'label': 'Salary/Payment', 'icon': Icons.payments},
+        {'key': 'my_attendance', 'label': 'My Attendance', 'icon': Icons.event_available},
+        {'key': 'apply_leave', 'label': 'Apply Leave', 'icon': Icons.time_to_leave},
+        {'key': 'create_test', 'label': 'Create Test', 'icon': Icons.quiz},
+        {'key': 'go_live', 'label': 'Go Live', 'icon': Icons.live_tv},
+        {'key': 'complaint_box', 'label': 'Complaint Box', 'icon': Icons.report_problem},
+        {'key': 'exam_results', 'label': 'Exam Results', 'icon': Icons.grade},
+        {'key': 'view_syllabus', 'label': 'View Syllabus', 'icon': Icons.import_contacts},
+      ];
+    } else if (role == 'management' || role == 'staff' || role == 'admin' || role == 'principal') {
+      return [
+        {'key': 'attendance', 'label': 'Attendance', 'icon': Icons.how_to_reg},
+        {'key': 'fee_mgmt', 'label': 'Fee Mgmt', 'icon': Icons.account_balance_wallet},
+        {'key': 'exams', 'label': 'Exams', 'icon': Icons.assignment},
+        {'key': 'exam_setup', 'label': 'Exam Setup', 'icon': Icons.settings_suggest},
+        {'key': 'routine', 'label': 'Routine', 'icon': Icons.schedule},
+        {'key': 'announcements', 'label': 'Announcements', 'icon': Icons.campaign},
+        {'key': 'complaint_box', 'label': 'Complaint Box', 'icon': Icons.report_problem},
+        {'key': 'user_management', 'label': 'User Mgmt', 'icon': Icons.people_outline},
+        {'key': 'leave_requests', 'label': 'Leave Requests', 'icon': Icons.event_busy},
+        {'key': 'scheduled_work', 'label': 'Scheduled Work', 'icon': Icons.work_history},
+        {'key': 'data_center', 'label': 'Data Center', 'icon': Icons.storage},
+      ];
+    }
+    return [];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final modules = _getModulesForRole(widget.user['role'] ?? '');
+    
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      child: Container(
+        width: double.maxFinite,
+        constraints: const BoxConstraints(maxWidth: 500, maxHeight: 600),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 20, spreadRadius: 5),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Header
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: AppColors.modernPrimary.withOpacity(0.05),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.modernPrimary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Icon(Icons.security, color: AppColors.modernPrimary, size: 28),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Manage Access', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87)),
+                        Text(widget.user['name'] ?? 'User', style: const TextStyle(fontSize: 14, color: Colors.black54)),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.black54),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+            ),
+            // Content
+            Flexible(
+              child: modules.isEmpty
+                  ? const Padding(
+                      padding: EdgeInsets.all(32),
+                      child: Text('No toggleable modules available for this role.', style: TextStyle(color: Colors.black54)),
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      shrinkWrap: true,
+                      itemCount: modules.length,
+                      itemBuilder: (context, index) {
+                        final module = modules[index];
+                        final isEnabled = _permissions[module['key']] ?? true; // Default true
+                        
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: isEnabled ? AppColors.modernPrimary.withOpacity(0.02) : Colors.grey.shade50,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: isEnabled ? AppColors.modernPrimary.withOpacity(0.1) : Colors.grey.shade200,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: isEnabled ? AppColors.modernPrimary.withOpacity(0.1) : Colors.grey.shade100,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Icon(module['icon'] as IconData, size: 20, color: isEnabled ? AppColors.modernPrimary : Colors.grey),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Text(
+                                  module['label'] as String,
+                                  style: TextStyle(
+                                    fontSize: 15, 
+                                    fontWeight: FontWeight.w600,
+                                    color: isEnabled ? Colors.black87 : Colors.black45,
+                                  ),
+                                ),
+                              ),
+                              Switch.adaptive(
+                                value: isEnabled,
+                                activeColor: AppColors.modernPrimary,
+                                onChanged: (val) {
+                                  setState(() => _permissions[module['key'] as String] = val);
+                                  if (widget.user['id'] != null) {
+                                     Provider.of<UserService>(context, listen: false)
+                                         .updateUserPermission(widget.user['id'], module['key'] as String, val);
+                                  }
+                                },
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+            ),
           ],
         ),
       ),

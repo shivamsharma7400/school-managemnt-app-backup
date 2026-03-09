@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import '../../core/constants/app_constants.dart';
 
 class MigrationUtil {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -8,8 +9,8 @@ class MigrationUtil {
     try {
       if (kDebugMode) print("Starting Aggressive Class Cleanup...");
 
-      // 1. Define standard classes that MUST remained
-      final standardClasses = ['1', '2', '3', '4', '5', '6', '7', '8'];
+      // 1. Define standard classes from AppConstants
+      final standardClasses = AppConstants.schoolClasses;
 
       // 2. Fetch ALL classes
       final classesSnapshot = await _firestore.collection('classes').get();
@@ -76,16 +77,23 @@ class MigrationUtil {
 
       for (var doc in usersSnapshot.docs) {
         final data = doc.data();
-        final classId = data['classId']?.toString().toLowerCase() ?? '';
+        final String rawClassId = data['classId']?.toString() ?? '';
+        final String classIdLower = rawClassId.toLowerCase();
         
         // Check if classId needs fixing
-        if (classId.startsWith('class') || classId.startsWith('grade')) {
-           // Extract number: "class 1" -> "1"
-           final newClassId = classId.replaceAll(RegExp(r'[^0-9]'), '');
+        if (classIdLower.contains('class') || classIdLower.contains('grade')) {
+           // Clean up: "Class 1" -> "1", "class LKG" -> "LKG"
+           String candidate = rawClassId
+              .replaceAll(RegExp(r'(?i)class|grade'), '')
+              .trim();
            
-           if (standardClasses.contains(newClassId)) {
-              userBatch.update(doc.reference, {'classId': newClassId});
-              userUpdatedCount++;
+           // Find match in standard list (case-insensitive)
+           for (var stdId in standardClasses) {
+             if (stdId.toLowerCase() == candidate.toLowerCase()) {
+               userBatch.update(doc.reference, {'classId': stdId});
+               userUpdatedCount++;
+               break;
+             }
            }
         }
       }

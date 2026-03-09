@@ -8,7 +8,7 @@ import '../../data/models/class_model.dart';
 class ClassStudentsScreen extends StatefulWidget {
   final ClassModel assignedClass;
 
-  const ClassStudentsScreen({required this.assignedClass});
+  const ClassStudentsScreen({super.key, required this.assignedClass});
 
   @override
   State<ClassStudentsScreen> createState() => _ClassStudentsScreenState();

@@ -6,7 +6,7 @@ import 'package:youtube_explode_dart/youtube_explode_dart.dart' as yt;
 class YouTubePlayerScreen extends StatefulWidget {
   final OnlineClass onlineClass;
 
-  const YouTubePlayerScreen({Key? key, required this.onlineClass}) : super(key: key);
+  const YouTubePlayerScreen({super.key, required this.onlineClass});
 
   @override
   _YouTubePlayerScreenState createState() => _YouTubePlayerScreenState();

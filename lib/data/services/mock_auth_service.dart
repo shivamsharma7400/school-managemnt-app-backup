@@ -101,6 +101,7 @@ class MockAuthService extends ChangeNotifier implements AuthService {
 // but just a boolean `isAuthenticated` or a simple custom User model.
 
 class MockUser implements User {
+  @override
   final String uid;
   MockUser(this.uid);
   
@@ -129,6 +130,6 @@ class MockUser implements User {
   @override Future<void> updatePassword(String newPassword) async {}
   @override Future<void> updatePhoneNumber(PhoneAuthCredential credential) async {}
   @override Future<void> updatePhotoURL(String? photoURL) async {}
-  @override Future<void> verifyBeforeUpdateEmail(String newEmail, {ActionCodeSettings? actionCodeSettings}) async {}
-  @override Metadata get metadata => throw UnimplementedError();
+  @override Future<void> verifyBeforeUpdateEmail(String newEmail, [ActionCodeSettings? actionCodeSettings]) async {}
+  @override dynamic get metadata => throw UnimplementedError();
 }

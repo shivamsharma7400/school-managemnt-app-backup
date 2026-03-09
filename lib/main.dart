@@ -28,7 +28,6 @@ import 'data/services/strategic_planning_service.dart';
 
 import 'data/services/bus_service.dart';
 import 'data/services/bus_routine_service.dart';
-import 'data/services/school_config_service.dart';
 import 'data/services/complaint_service.dart';
 import 'features/auth/login_screen.dart';
 import 'features/auth/register_screen.dart';
@@ -40,7 +39,6 @@ import 'features/management/management_dashboard.dart';
 import 'features/driver/driver_dashboard.dart';
 import 'features/auth/pending_approval_screen.dart';
 import 'features/student/passed_out_dashboard.dart';
-import 'features/common/splash_screen.dart';
 import 'features/staff/staff_dashboard.dart';
 import 'features/admin/developer_dashboard.dart';
 
@@ -58,6 +56,8 @@ void main() async {
 }
 
 class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
@@ -81,7 +81,6 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => BusService()),
         ChangeNotifierProvider(create: (_) => NotificationService()..initialize()), // Init here
 
-        ChangeNotifierProvider(create: (_) => SchoolConfigService()),
         ChangeNotifierProvider(create: (_) => ThemeService()), // Add ThemeService
         Provider(create: (_) => ComplaintService()),
         ChangeNotifierProvider(create: (_) => StrategicPlanningService()),
@@ -108,6 +107,8 @@ class MyApp extends StatelessWidget {
 }
 
 class AuthWrapper extends StatelessWidget {
+  const AuthWrapper({super.key});
+
   @override
   Widget build(BuildContext context) {
     final authService = Provider.of<AuthService>(context);

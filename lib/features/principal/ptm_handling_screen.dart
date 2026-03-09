@@ -7,7 +7,7 @@ import '../../data/models/scheduled_exam_model.dart';
 class PTMHandlingScreen extends StatefulWidget {
   final ScheduledExam exam;
 
-  const PTMHandlingScreen({Key? key, required this.exam}) : super(key: key);
+  const PTMHandlingScreen({super.key, required this.exam});
 
   @override
   _PTMHandlingScreenState createState() => _PTMHandlingScreenState();

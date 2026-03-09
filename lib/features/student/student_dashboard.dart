@@ -4,15 +4,10 @@ import 'package:provider/provider.dart';
 import '../../data/services/auth_service.dart';
 import '../attendance/attendance_view_screen.dart';
 import '../fees/fee_status_screen.dart';
-import '../fees/fee_status_screen.dart';
 import '../common/routine_view_screen.dart';
 import '../communication/announcement_screen.dart';
-import '../results/student_result_screen.dart';
 import '../profile/profile_screen.dart';
 import '../homework/homework_screen.dart';
-import '../../data/services/user_service.dart';
-import '../notification/notification_screen.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../common/leave/apply_leave_screen.dart';
 import 'test/student_test_list_screen.dart';
 import 'classes/student_online_class_list.dart';
@@ -25,6 +20,8 @@ import 'exam_dashboard_screen.dart';
 import '../common/complaint_box_screen.dart';
 
 class StudentDashboard extends StatelessWidget {
+  const StudentDashboard({super.key});
+
   @override
   Widget build(BuildContext context) {
     final authService = Provider.of<AuthService>(context);

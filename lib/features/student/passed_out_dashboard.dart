@@ -5,6 +5,8 @@ import '../../data/services/auth_service.dart';
 import '../../core/constants/app_constants.dart';
 
 class PassedOutDashboard extends StatelessWidget {
+  const PassedOutDashboard({super.key});
+
   @override
   Widget build(BuildContext context) {
     final authService = Provider.of<AuthService>(context);

@@ -6,6 +6,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../data/services/student_query_service.dart';
 
 class StudentQueriesScreen extends StatelessWidget {
+  const StudentQueriesScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(

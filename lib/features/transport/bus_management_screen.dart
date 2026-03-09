@@ -10,6 +10,8 @@ import '../../data/models/class_model.dart';
 import '../../core/constants/app_constants.dart';
 
 class BusManagementScreen extends StatefulWidget {
+  const BusManagementScreen({super.key});
+
   @override
   _BusManagementScreenState createState() => _BusManagementScreenState();
 }
@@ -239,7 +241,7 @@ class _BusStopsTab extends StatelessWidget {
 
 class AddDestinationScreen extends StatefulWidget {
   final BusDestination? destination;
-  AddDestinationScreen({this.destination});
+  const AddDestinationScreen({super.key, this.destination});
 
   @override
   _AddDestinationScreenState createState() => _AddDestinationScreenState();

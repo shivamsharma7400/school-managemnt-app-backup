@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -6,7 +5,6 @@ import 'package:printing/printing.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 
 class ReceiptService {
   static final ReceiptService _instance = ReceiptService._internal();
@@ -119,7 +117,7 @@ class ReceiptService {
     double currentMonthTotal = 0.0;
 
     // Helper to add rows
-    pw.TableRow _row(String label, dynamic rate, dynamic amount) {
+    pw.TableRow row(String label, dynamic rate, dynamic amount) {
       return pw.TableRow(
         children: [
           pw.Padding(
@@ -140,19 +138,19 @@ class ReceiptService {
 
     // Optional Components
     if (feeConfig['Coaching Fee'] != false && coachingFeeBase > 0) {
-      feeRows.add(_row('Coaching Fee', coachingFeeBase.toInt(), coachingFeeBase.toInt()));
+      feeRows.add(row('Coaching Fee', coachingFeeBase.toInt(), coachingFeeBase.toInt()));
       currentMonthTotal += coachingFeeBase;
     }
     if (feeConfig['Milk Fee'] != false && milkFeeBase > 0) {
-      feeRows.add(_row('Milk Fee', milkFeeBase.toInt(), milkFeeBase.toInt()));
+      feeRows.add(row('Milk Fee', milkFeeBase.toInt(), milkFeeBase.toInt()));
       currentMonthTotal += milkFeeBase;
     }
     if (feeConfig['Bus Fee'] != false && studentBusFee > 0) {
-      feeRows.add(_row('Bus Fee', studentBusFee.toInt(), studentBusFee.toInt()));
+      feeRows.add(row('Bus Fee', studentBusFee.toInt(), studentBusFee.toInt()));
       currentMonthTotal += studentBusFee;
     }
     if (feeConfig['Hostel Fee'] != false && hostelFeeBase > 0) {
-      feeRows.add(_row('Hostel Fee', hostelFeeBase.toInt(), hostelFeeBase.toInt()));
+      feeRows.add(row('Hostel Fee', hostelFeeBase.toInt(), hostelFeeBase.toInt()));
       currentMonthTotal += hostelFeeBase;
     }
 
@@ -162,10 +160,10 @@ class ReceiptService {
     final double previousDue = totalPayablePrior - currentMonthTotal;
 
     if (previousDue > 0) {
-      feeRows.add(_row('Previous Due Balance', previousDue.toInt(), previousDue.toInt()));
+      feeRows.add(row('Previous Due Balance', previousDue.toInt(), previousDue.toInt()));
     } else if (previousDue < 0) {
        // Advanced Payment or discount
-       feeRows.add(_row('Previously Paid', previousDue.toInt(), previousDue.toInt()));
+       feeRows.add(row('Previously Paid', previousDue.toInt(), previousDue.toInt()));
     }
 
     pdf.addPage(
@@ -205,7 +203,7 @@ class ReceiptService {
                       pw.SizedBox(height: 4),
                       pw.Text(schoolAddress, style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700)),
                       pw.SizedBox(height: 2),
-                      pw.Text('Contact: $schoolContact', style: const pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                       pw.Text('Contact: $schoolContact', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
                     ],
                   ),
                 ),
@@ -232,8 +230,8 @@ class ReceiptService {
                       flex: 1,
                       child: pw.Column(
                         children: [
-                          _buildModernInfoRow('Student Name', userData['name']?.toString()?.toUpperCase() ?? 'N/A'),
-                          _buildModernInfoRow('Father\'s Name', userData['fatherName']?.toString()?.toUpperCase() ?? 'N/A'),
+                          _buildModernInfoRow('Student Name', userData['name']?.toString().toUpperCase() ?? 'N/A'),
+                          _buildModernInfoRow('Father\'s Name', userData['fatherName']?.toString().toUpperCase() ?? 'N/A'),
                           _buildModernInfoRow('Admission No.', userData['admNo']?.toString() ?? 'N/A'),
                         ],
                       ),
@@ -245,7 +243,7 @@ class ReceiptService {
                         children: [
                           _buildModernInfoRow('Receipt Number', receiptNo),
                           _buildModernInfoRow('Payment Date', DateFormat('dd MMM, yyyy').format(date)),
-                          _buildModernInfoRow('Class / Roll', '${userData['classId']?.toString()?.toUpperCase() ?? 'N/A'} - Roll: ${userData['rollNo']?.toString() ?? 'N/A'}'),
+                          _buildModernInfoRow('Class / Roll', '${userData['classId']?.toString().toUpperCase() ?? 'N/A'} - Roll: ${userData['rollNo']?.toString() ?? 'N/A'}'),
                         ],
                       ),
                     ),
@@ -412,8 +410,8 @@ class ReceiptService {
     
     String convert(int n) {
       if (n < 20) return units[n];
-      if (n < 100) return tens[n ~/ 10] + (n % 10 != 0 ? " " + units[n % 10] : "");
-      if (n < 1000) return units[n ~/ 100] + " HUNDRED" + (n % 100 != 0 ? " AND " + convert(n % 100) : "");
+      if (n < 100) return tens[n ~/ 10] + (n % 10 != 0 ? " ${units[n % 10]}" : "");
+      if (n < 1000) return "${units[n ~/ 100]} HUNDRED${n % 100 != 0 ? " AND ${convert(n % 100)}" : ""}";
       return "";
     }
 
@@ -421,11 +419,11 @@ class ReceiptService {
     if (value < 1000) return convert(value);
     
     if (value < 100000) {
-      return convert(value ~/ 1000) + " THOUSAND" + (value % 1000 != 0 ? " " + convert(value % 1000) : "");
+      return "${convert(value ~/ 1000)} THOUSAND${value % 1000 != 0 ? " ${convert(value % 1000)}" : ""}";
     }
 
     if (value < 10000000) {
-      return convert(value ~/ 100000) + " LAKH" + (value % 100000 != 0 ? " " + convert(value % 100000) : "");
+      return "${convert(value ~/ 100000)} LAKH${value % 100000 != 0 ? " ${convert(value % 100000)}" : ""}";
     }
     
     return value.toString();

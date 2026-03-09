@@ -3,12 +3,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:get/get.dart';
-import '../../../core/constants/app_constants.dart';
 import '../../../core/utils/drive_helper.dart';
 import '../../../data/services/auth_service.dart';
 import '../../profile/profile_screen.dart';
 
 class DashboardProfileCard extends StatelessWidget {
+  const DashboardProfileCard({super.key});
+
   @override
   Widget build(BuildContext context) {
     final user = Provider.of<AuthService>(context).user;

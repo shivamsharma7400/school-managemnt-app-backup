@@ -7,6 +7,8 @@ import '../../../data/services/auth_service.dart';
 import 'test_taking_screen.dart';
 
 class StudentTestListScreen extends StatelessWidget {
+  const StudentTestListScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
     final authService = Provider.of<AuthService>(context);

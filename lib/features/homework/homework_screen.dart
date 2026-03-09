@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../data/services/assignment_service.dart';
@@ -54,8 +53,9 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
                       context,
                     ).getAssignmentsForClass(_selectedClassId!),
                     builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting)
+                      if (snapshot.connectionState == ConnectionState.waiting) {
                         return Center(child: CircularProgressIndicator());
+                      }
 
                       if (snapshot.hasError) {
                         return Center(

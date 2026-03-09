@@ -353,7 +353,7 @@ class AIService extends ChangeNotifier {
       final roleLabel = role.toLowerCase() == 'admin' ? 'Admin' : 'Principal';
 
       final systemPrompt = """
-      You are the "${roleLabel}'s Strategic Command Assistant" for $schoolName.
+      You are the "$roleLabel's Strategic Command Assistant" for $schoolName.
       Current Session: $session | Date: ${DateFormat('dd-MMM-yyyy').format(now)}
       
       CRITICAL ROLE:

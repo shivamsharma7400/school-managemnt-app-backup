@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../core/constants/app_constants.dart';
 
 class PromotionService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;

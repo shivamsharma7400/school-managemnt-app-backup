@@ -8,6 +8,8 @@ import 'package:intl/intl.dart';
 import '../../data/services/school_info_service.dart';
 import '../../data/models/bus_destination.dart';
 import '../../data/services/bus_service.dart';
+import '../../core/constants/app_constants.dart';
+import '../../data/utils/migration_util.dart';
 
 class FeeManagementScreen extends StatefulWidget {
   const FeeManagementScreen({super.key});
@@ -127,7 +129,12 @@ class _FeeManagementScreenState extends State<FeeManagementScreen>
         }
 
         _classes = snapshot.data!;
-        _classes.sort((a, b) => a.name.compareTo(b.name));
+        _classes.sort((a, b) {
+          final indexA = AppConstants.schoolClasses.indexOf(a.name);
+          final indexB = AppConstants.schoolClasses.indexOf(b.name);
+          if (indexA != -1 && indexB != -1) return indexA.compareTo(indexB);
+          return a.name.compareTo(b.name);
+        });
 
         if (_tabController == null || _tabController!.length != _classes.length) {
           _tabController = TabController(length: _classes.length, vsync: this);
@@ -206,6 +213,38 @@ class _FeeManagementScreenState extends State<FeeManagementScreen>
               color: _isAutoPilotEnabled == true ? Colors.amber : Colors.white60,
             ),
             tooltip: 'Auto Pilot Settings',
+          ),
+        ),
+        Container(
+          margin: const EdgeInsets.only(right: 8),
+          child: IconButton(
+            onPressed: () async {
+              try {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Syncing standard classes...'))
+                );
+                await MigrationUtil.standardizeClassIds();
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      backgroundColor: Colors.green,
+                      content: Text('Sync complete! All classes from Nursery to 12 are now available.')
+                    )
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      backgroundColor: Colors.red,
+                      content: Text('Sync failed: $e')
+                    )
+                  );
+                }
+              }
+            },
+            icon: const Icon(Icons.sync_rounded, color: Colors.white),
+            tooltip: 'Sync Standard Classes',
           ),
         ),
       ],
@@ -435,7 +474,7 @@ class _FeeManagementScreenState extends State<FeeManagementScreen>
     if (_isAutoPilotEnabled == true) {
       selectedMonth = DateFormat('MMMM').format(DateTime.now());
       // Special check: Only pre-select if not already processed
-      final year = _calculateYearForMonth(selectedMonth!, currentSession);
+      final year = _calculateYearForMonth(selectedMonth, currentSession);
       if (processedMonths.contains("$selectedMonth $year")) {
         selectedMonth = null;
       }
@@ -676,7 +715,7 @@ class _FeeManagementScreenState extends State<FeeManagementScreen>
                         title: const Text('Fee Auto Pilot', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                         subtitle: const Text('Process monthly fees automatically', style: TextStyle(fontSize: 11)),
                         value: _isAutoPilotEnabled == true,
-                        activeColor: Colors.indigo,
+                        activeThumbColor: Colors.indigo,
                         onChanged: (val) {
                           setDialogState(() => _isAutoPilotEnabled = val);
                         },
@@ -685,7 +724,7 @@ class _FeeManagementScreenState extends State<FeeManagementScreen>
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                           child: DropdownButtonFormField<int>(
-                            value: _autoPilotDay,
+                            initialValue: _autoPilotDay,
                             decoration: const InputDecoration(
                               labelText: 'Processing Day',
                               border: OutlineInputBorder(),
@@ -717,7 +756,7 @@ class _FeeManagementScreenState extends State<FeeManagementScreen>
                         title: const Text('Fine Auto Pilot', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                         subtitle: const Text('Apply late fines to outstanding dues', style: TextStyle(fontSize: 11)),
                         value: _isFineAutoPilotEnabled == true,
-                        activeColor: Colors.orange,
+                        activeThumbColor: Colors.orange,
                         onChanged: (val) {
                           setDialogState(() => _isFineAutoPilotEnabled = val);
                         },
@@ -726,7 +765,7 @@ class _FeeManagementScreenState extends State<FeeManagementScreen>
                         Padding(
                           padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
                           child: DropdownButtonFormField<int>(
-                            value: _fineAutoPilotDay,
+                            initialValue: _fineAutoPilotDay,
                             decoration: const InputDecoration(
                               labelText: 'Fine Apply Day',
                               border: OutlineInputBorder(),
@@ -781,9 +820,11 @@ class _FeeManagementScreenState extends State<FeeManagementScreen>
                   'fineAutoPilotDay': _fineAutoPilotDay,
                   'fineAutoPilotAmount': amount,
                 });
-                if (mounted) setState(() {
+                if (mounted) {
+                  setState(() {
                   _fineAmount = amount;
                 });
+                }
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('All Auto Pilot settings saved'), backgroundColor: Colors.indigo),
@@ -1112,7 +1153,7 @@ class _DefineFeeSheetState extends State<_DefineFeeSheet> {
   late TextEditingController _coachingCtrl;
   late TextEditingController _busCtrl;
   late TextEditingController _hostelCtrl;
-  Map<String, TextEditingController> _otherCtrls = {};
+  final Map<String, TextEditingController> _otherCtrls = {};
 
   @override
   void initState() {
@@ -1301,7 +1342,7 @@ class _CashPaymentSheetState extends State<_CashPaymentSheet> {
               if (!snapshot.hasData) return const CircularProgressIndicator();
               final students = snapshot.data!;
               return DropdownButtonFormField<String>(
-                value: _selectedStudent?['id'],
+                initialValue: _selectedStudent?['id'],
                 decoration: InputDecoration(
                   labelText: 'Select Student',
                   prefixIcon: const Icon(Icons.person_outline),
@@ -1445,7 +1486,7 @@ class _ApplyFineSheetState extends State<_ApplyFineSheet> {
               if (!snapshot.hasData) return const CircularProgressIndicator();
               final students = snapshot.data!;
               return DropdownButtonFormField<String>(
-                value: _selectedStudent?['id'],
+                initialValue: _selectedStudent?['id'],
                 decoration: InputDecoration(
                   labelText: 'Select Student',
                   prefixIcon: const Icon(Icons.person_search_outlined),

@@ -10,7 +10,7 @@ import 'exam_question_list_screen.dart';
 class ExamManagementDetailScreen extends StatelessWidget {
   final ScheduledExam exam;
 
-  const ExamManagementDetailScreen({Key? key, required this.exam}) : super(key: key);
+  const ExamManagementDetailScreen({super.key, required this.exam});
 
   @override
   Widget build(BuildContext context) {

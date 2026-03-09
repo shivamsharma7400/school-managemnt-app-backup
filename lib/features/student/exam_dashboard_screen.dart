@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../core/constants/app_constants.dart';
-import '../../data/services/auth_service.dart';
 import '../../data/models/scheduled_exam_model.dart';
 import 'student_exam_detail_screen.dart';
 
 class ExamDashboardScreen extends StatelessWidget {
+  const ExamDashboardScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(

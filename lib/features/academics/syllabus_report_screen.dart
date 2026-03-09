@@ -4,7 +4,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'subject_detail_screen.dart';
 import '../../core/constants/app_constants.dart';
 import '../../data/services/auth_service.dart';
-import '../../data/services/school_config_service.dart';
 import '../../data/services/syllabus_report_pdf_service.dart';
 import 'package:provider/provider.dart';
 
@@ -14,11 +13,11 @@ class SyllabusReportScreen extends StatefulWidget {
   final bool isReadOnly;
 
   const SyllabusReportScreen({
-    Key? key,
+    super.key,
     this.isClassTeacherMode = false,
     this.isSubjectTeacherMode = false,
     this.isReadOnly = false,
-  }) : super(key: key);
+  });
 
   @override
   _SyllabusReportScreenState createState() => _SyllabusReportScreenState();
@@ -132,7 +131,7 @@ class _SyllabusReportScreenState extends State<SyllabusReportScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     DropdownButtonFormField<String>(
-                      value: selectedTerm,
+                      initialValue: selectedTerm,
                       decoration: InputDecoration(
                         labelText: 'Select Term',
                         filled: true,
@@ -219,12 +218,10 @@ class _SyllabusReportScreenState extends State<SyllabusReportScreen> {
           .where('classId', isEqualTo: _selectedClassId)
           .get();
 
-      final List<Map<String, dynamic>> data = syllabuses.docs.map((doc) => doc.data() as Map<String, dynamic>).toList();
+      final List<Map<String, dynamic>> data = syllabuses.docs.map((doc) => doc.data()).toList();
       
-      final schoolName = Provider.of<SchoolConfigService>(context, listen: false).schoolName;
-
       await SyllabusReportPdfService.generate(
-        schoolName: schoolName,
+        schoolName: AppStrings.appName,
         className: _selectedClassName ?? 'N/A',
         term: term,
         extraColumns: extraColumns,

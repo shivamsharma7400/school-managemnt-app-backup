@@ -7,6 +7,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:vps/core/constants/app_constants.dart';
 
 class PrincipalComplaintListScreen extends StatelessWidget {
+  const PrincipalComplaintListScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
@@ -387,7 +389,7 @@ class _ResponseDialogState extends State<_ResponseDialog> {
         widget.isApprove ? 'Submit Approval' : 'Submit Rejection',
         style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
       ),
-      content: Container(
+      content: SizedBox(
         width: MediaQuery.of(context).size.width * 0.8,
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -439,9 +441,6 @@ class _ResponseDialogState extends State<_ResponseDialog> {
         ),
         ElevatedButton(
           onPressed: _isSubmitting ? null : _submitResponse,
-          child: _isSubmitting 
-              ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-              : Text('Confirm Action', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
           style: ElevatedButton.styleFrom(
             backgroundColor: widget.isApprove ? Colors.green : Colors.red,
             foregroundColor: Colors.white,
@@ -449,6 +448,9 @@ class _ResponseDialogState extends State<_ResponseDialog> {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
           ),
+          child: _isSubmitting 
+              ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+              : Text('Confirm Action', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
         ),
       ],
     );

@@ -5,6 +5,8 @@ import '../../../data/models/leave_request.dart';
 import '../../../data/services/leave_service.dart';
 
 class LeaveApprovalScreen extends StatelessWidget {
+  const LeaveApprovalScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(

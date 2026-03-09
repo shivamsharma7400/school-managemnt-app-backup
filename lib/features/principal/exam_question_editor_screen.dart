@@ -18,7 +18,7 @@ class ExamQuestionEditorScreen extends StatefulWidget {
   final ExamQuestionPaper? paper;
   final String? selectedClassInitial;
 
-  ExamQuestionEditorScreen({required this.exam, this.paper, this.selectedClassInitial});
+  const ExamQuestionEditorScreen({super.key, required this.exam, this.paper, this.selectedClassInitial});
 
   @override
   _ExamQuestionEditorScreenState createState() => _ExamQuestionEditorScreenState();
@@ -42,7 +42,7 @@ class _ExamQuestionEditorScreenState extends State<ExamQuestionEditorScreen> {
   List<SectionController> _sectionControllers = [];
   int _activeSectionIndex = 0;
   
-  stt.SpeechToText _speech = stt.SpeechToText();
+  final stt.SpeechToText _speech = stt.SpeechToText();
   bool _isListening = false;
   String _lastWords = '';
   TextEditingController? _activeController;
@@ -487,9 +487,14 @@ class _ExamQuestionEditorScreenState extends State<ExamQuestionEditorScreen> {
                   stream: Provider.of<ClassService>(context, listen: false).getAllClasses(),
                   builder: (context, snapshot) {
                     final classes = snapshot.data ?? [];
-                    classes.sort((a, b) => a.name.compareTo(b.name));
+                    classes.sort((a, b) {
+                      final indexA = AppConstants.schoolClasses.indexOf(a.name);
+                      final indexB = AppConstants.schoolClasses.indexOf(b.name);
+                      if (indexA != -1 && indexB != -1) return indexA.compareTo(indexB);
+                      return a.name.compareTo(b.name);
+                    });
                     return DropdownButtonFormField<String>(
-                      value: _selectedClassName,
+                      initialValue: _selectedClassName,
                       style: GoogleFonts.inter(fontSize: 14, color: Colors.black87),
                       decoration: InputDecoration(
                         labelText: 'Standard / Class',
@@ -603,7 +608,7 @@ class _ExamQuestionEditorScreenState extends State<ExamQuestionEditorScreen> {
                   ),
                 ),
                 const SizedBox(width: 16),
-                Container(
+                SizedBox(
                   width: 140,
                   child: TextFormField(
                     controller: sc.marksLabel,
@@ -676,7 +681,7 @@ class _ExamQuestionEditorScreenState extends State<ExamQuestionEditorScreen> {
                 ),
               ),
               const SizedBox(width: 12),
-              Container(
+              SizedBox(
                 width: 70,
                 child: TextFormField(
                   controller: ic.marks,
@@ -726,7 +731,7 @@ class _ExamQuestionEditorScreenState extends State<ExamQuestionEditorScreen> {
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         children: [
-          Container(
+          SizedBox(
             width: 30,
             child: Text("${roman[subIndex]})", style: TextStyle(fontSize: 12, color: Colors.grey)),
           ),

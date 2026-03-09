@@ -6,7 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 class DriverAttendanceScreen extends StatefulWidget {
-  const DriverAttendanceScreen({Key? key}) : super(key: key);
+  const DriverAttendanceScreen({super.key});
 
   @override
   _DriverAttendanceScreenState createState() => _DriverAttendanceScreenState();

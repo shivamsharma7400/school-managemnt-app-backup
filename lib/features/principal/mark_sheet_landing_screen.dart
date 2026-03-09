@@ -7,6 +7,8 @@ import '../../data/models/scheduled_exam_model.dart';
 import 'mark_sheet_screen.dart';
 
 class MarkSheetLandingScreen extends StatelessWidget {
+  const MarkSheetLandingScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(

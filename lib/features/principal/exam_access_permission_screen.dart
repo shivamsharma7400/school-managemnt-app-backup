@@ -7,7 +7,7 @@ import '../../data/models/scheduled_exam_model.dart';
 class ExamAccessPermissionScreen extends StatefulWidget {
   final ScheduledExam exam;
 
-  const ExamAccessPermissionScreen({Key? key, required this.exam}) : super(key: key);
+  const ExamAccessPermissionScreen({super.key, required this.exam});
 
   @override
   _ExamAccessPermissionScreenState createState() => _ExamAccessPermissionScreenState();
@@ -81,7 +81,7 @@ class _ExamAccessPermissionScreenState extends State<ExamAccessPermissionScreen>
               Card(
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 child: SwitchListTile(
-                  activeColor: AppColors.modernPrimary,
+                  activeThumbColor: AppColors.modernPrimary,
                   title: Text('Exam Routine', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 18)),
                   subtitle: Text('Allow students to view and download the exam routine.'),
                   secondary: Container(
@@ -97,7 +97,7 @@ class _ExamAccessPermissionScreenState extends State<ExamAccessPermissionScreen>
               Card(
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 child: SwitchListTile(
-                  activeColor: AppColors.modernPrimary,
+                  activeThumbColor: AppColors.modernPrimary,
                   title: Text('Admit Card', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 18)),
                   subtitle: Text('Allow students with clear dues to view and print their admit cards.'),
                   secondary: Container(
@@ -113,7 +113,7 @@ class _ExamAccessPermissionScreenState extends State<ExamAccessPermissionScreen>
               Card(
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 child: SwitchListTile(
-                  activeColor: AppColors.modernPrimary,
+                  activeThumbColor: AppColors.modernPrimary,
                   title: Text('Mark Sheet', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 18)),
                   subtitle: Text('Allow students to view their result mark sheets.'),
                   secondary: Container(

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../data/services/school_info_service.dart';
-import '../../data/services/school_config_service.dart';
+import '../../core/constants/app_constants.dart';
 
 class SchoolInfoScreen extends StatefulWidget {
+  const SchoolInfoScreen({super.key});
+
   @override
   _SchoolInfoScreenState createState() => _SchoolInfoScreenState();
 }
@@ -127,7 +129,7 @@ class _SchoolInfoScreenState extends State<SchoolInfoScreen> {
                 child: ListView(
                   children: [
                     Text(
-                      "Teach ${Provider.of<SchoolConfigService>(context).aiAgentName} about your school.\nThe more details you provide, the better it answers.",
+                      "Teach ${AppStrings.aiAgentName} about your school.\nThe more details you provide, the better it answers.",
                       style: TextStyle(color: Colors.grey[700], fontStyle: FontStyle.italic),
                     ),
                     SizedBox(height: 16),
@@ -219,7 +221,7 @@ class _SchoolInfoScreenState extends State<SchoolInfoScreen> {
                            ),
                          ),
                       );
-                    }).toList(),
+                    }),
 
                     SizedBox(height: 24),
                     ElevatedButton(

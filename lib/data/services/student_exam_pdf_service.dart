@@ -5,8 +5,8 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:http/http.dart' as http;
 import '../models/scheduled_exam_model.dart';
+import '../../core/constants/app_constants.dart';
 import '../../core/utils/drive_helper.dart';
-import 'school_config_service.dart';
 
 class StudentExamPdfService {
   static Future<void> printExamRoutine(
@@ -78,8 +78,8 @@ class StudentExamPdfService {
                   pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.center,
                     children: [
-                      pw.Text('VEENA PUBLIC SCHOOL', style: pw.TextStyle(font: fontBold, fontSize: 26, color: PdfColors.red800)),
-                      pw.Text('KHIDDI, RAJOUN, BANKA (BIHAR) - 813107', style: pw.TextStyle(font: font, fontSize: 11)),
+                      pw.Text(AppStrings.appName.toUpperCase(), style: pw.TextStyle(font: fontBold, fontSize: 26, color: PdfColors.red800)),
+                      pw.Text(AppStrings.schoolAddress, style: pw.TextStyle(font: font, fontSize: 11)),
                     ],
                   ),
                 ],
@@ -225,10 +225,9 @@ class StudentExamPdfService {
                   pw.SizedBox(width: 25),
                   pw.Column(
                     children: [
-                      pw.Text('VEENA PUBLIC SCHOOL', style: pw.TextStyle(font: fontBold, fontSize: 26, color: PdfColors.red800)),
-                      pw.Text('KHIDDI, RAJOUN, BANKA (BIHAR) - 813107', style: pw.TextStyle(font: font, fontSize: 11)),
-                      pw.Text('Website: www.vpsbanka.com | E-mail id: vpsbanka@gmail.com', style: pw.TextStyle(font: font, fontSize: 11)),
-                      pw.Text('Contact No: +91- 9263101520', style: pw.TextStyle(font: font, fontSize: 11)),
+                      pw.Text(AppStrings.appName.toUpperCase(), style: pw.TextStyle(font: fontBold, fontSize: 26, color: PdfColors.red800)),
+                       pw.Text(AppStrings.schoolAddress, style: pw.TextStyle(font: font, fontSize: 11)),
+                      pw.Text('Phone: ${AppStrings.schoolPhone} | E-mail: ${AppStrings.schoolEmail}', style: pw.TextStyle(font: font, fontSize: 11)),
                     ],
                   ),
                 ],
@@ -373,7 +372,6 @@ class StudentExamPdfService {
     Map<String, dynamic> student,
     Map<String, dynamic> studentMarks,
     List<Map<String, dynamic>> previewSubjects,
-    SchoolConfigService schoolConfig
   ) async {
     double totalObtained = 0;
     double maxMarks = 0;
@@ -442,10 +440,9 @@ class StudentExamPdfService {
                 pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.center,
                   children: [
-                    pw.Text(schoolConfig.schoolName.toUpperCase(), style: pw.TextStyle(font: fontBold, fontSize: 24, color: PdfColors.red800)),
-                    pw.Text('KHIDDI, RAJOUN, BANKA (BIHAR) - 813107', style: pw.TextStyle(font: font, fontSize: 10)),
-                    pw.Text('Website: www.vpsbanka.com | E-mail id: vpsbanka@gmail.com', style: pw.TextStyle(font: font, fontSize: 10)),
-                    pw.Text('Contact No: +91- 9263101520', style: pw.TextStyle(font: font, fontSize: 10)),
+                    pw.Text(AppStrings.appName.toUpperCase(), style: pw.TextStyle(font: fontBold, fontSize: 24, color: PdfColors.red800)),
+                    pw.Text(AppStrings.schoolAddress, style: pw.TextStyle(font: font, fontSize: 10)),
+                    pw.Text('Phone: ${AppStrings.schoolPhone} | E-mail: ${AppStrings.schoolEmail}', style: pw.TextStyle(font: font, fontSize: 10)),
                   ],
                 ),
               ],
@@ -521,7 +518,7 @@ class StudentExamPdfService {
                       _buildTableCell(sub['fullMarks'].toString(), font),
                       _buildTableCell(studentMarks[sub['name']]?.toString() ?? '0', fontBold),
                     ],
-                  )).toList(),
+                  )),
                 ],
               ),
               

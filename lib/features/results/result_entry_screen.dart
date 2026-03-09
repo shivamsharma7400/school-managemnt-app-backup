@@ -9,6 +9,8 @@ import '../../data/services/auth_service.dart';
 import '../../data/models/scheduled_exam_model.dart';
 
 class ResultEntryScreen extends StatefulWidget {
+  const ResultEntryScreen({super.key});
+
   @override
   _ResultEntryScreenState createState() => _ResultEntryScreenState();
 }
@@ -24,7 +26,7 @@ class _ResultEntryScreenState extends State<ResultEntryScreen> {
 
   // Dynamic Subjects List
   // List of Maps: { 'name': Controller, 'obtained': Controller, 'full': Controller }
-  List<Map<String, TextEditingController>> _subjectControllers = [];
+  final List<Map<String, TextEditingController>> _subjectControllers = [];
 
   bool _isLoading = false;
 
@@ -140,7 +142,7 @@ class _ResultEntryScreenState extends State<ResultEntryScreen> {
                       ],
                     ),
                   );
-               }).toList(),
+               }),
 
                 // No more manual subject adding as it's fetched from routine
 
@@ -149,8 +151,8 @@ class _ResultEntryScreenState extends State<ResultEntryScreen> {
                  width: double.infinity,
                  child: ElevatedButton(
                    onPressed: _isLoading ? null : _submitResult,
-                   child: _isLoading ? CircularProgressIndicator(color: Colors.white) : Text('Save & Publish Result'),
                    style: ElevatedButton.styleFrom(minimumSize: Size(double.infinity, 50)),
+                   child: _isLoading ? CircularProgressIndicator(color: Colors.white) : Text('Save & Publish Result'),
                  ),
                ),
             ],
@@ -166,7 +168,7 @@ class _ResultEntryScreenState extends State<ResultEntryScreen> {
       builder: (context, snapshot) {
         if (!snapshot.hasData) return LinearProgressIndicator();
         return DropdownButtonFormField<String>(
-          value: _selectedClassId,
+          initialValue: _selectedClassId,
           decoration: InputDecoration(labelText: 'Select Class', border: OutlineInputBorder()),
           items: snapshot.data!.map((c) => DropdownMenuItem(value: c.id, child: Text(c.name))).toList(),
           onChanged: (val) => setState(() {
@@ -188,7 +190,7 @@ class _ResultEntryScreenState extends State<ResultEntryScreen> {
         final students = snapshot.data!;
 
         return DropdownButtonFormField<String>(
-          value: _selectedStudentId,
+          initialValue: _selectedStudentId,
           decoration: InputDecoration(labelText: 'Select Student', border: OutlineInputBorder()),
           items: students.map((s) {
             return DropdownMenuItem(
@@ -220,7 +222,7 @@ class _ResultEntryScreenState extends State<ResultEntryScreen> {
         if (exams.isEmpty) return const Text("No scheduled exams found. Please setup exams in Principal Dashboard.");
         
         return DropdownButtonFormField<ScheduledExam>(
-          value: _selectedExam,
+          initialValue: _selectedExam,
           decoration: const InputDecoration(labelText: 'Select Exam', border: OutlineInputBorder()),
           items: exams.map((e) => DropdownMenuItem(value: e, child: Text(e.name))).toList(),
           onChanged: (val) {
@@ -284,8 +286,9 @@ class _ResultEntryScreenState extends State<ResultEntryScreen> {
       // Grade Calculation
       double percentage = (totalFull > 0) ? (totalObtained / totalFull) * 100 : 0;
       String grade = 'F';
-      if (percentage >= 90) grade = 'A+';
-      else if (percentage >= 80) grade = 'A';
+      if (percentage >= 90) {
+        grade = 'A+';
+      } else if (percentage >= 80) grade = 'A';
       else if (percentage >= 70) grade = 'B';
       else if (percentage >= 60) grade = 'C';
       else if (percentage >= 40) grade = 'D';

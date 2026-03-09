@@ -8,7 +8,7 @@ import '../../data/models/scheduled_exam_model.dart';
 class ExamRoutineScreen extends StatefulWidget {
   final ScheduledExam exam;
 
-  const ExamRoutineScreen({Key? key, required this.exam}) : super(key: key);
+  const ExamRoutineScreen({super.key, required this.exam});
 
   @override
   _ExamRoutineScreenState createState() => _ExamRoutineScreenState();
@@ -189,8 +189,11 @@ class _ExamRoutineScreenState extends State<ExamRoutineScreen> {
     );
     if (picked != null) {
       setState(() {
-        if (isStart) _startTime = picked;
-        else _endTime = picked;
+        if (isStart) {
+          _startTime = picked;
+        } else {
+          _endTime = picked;
+        }
       });
     }
   }
@@ -312,7 +315,7 @@ class _ExamRoutineScreenState extends State<ExamRoutineScreen> {
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: DataTable(
-          headingRowColor: MaterialStateProperty.all(AppColors.modernPrimary.withOpacity(0.1)),
+          headingRowColor: WidgetStateProperty.all(AppColors.modernPrimary.withOpacity(0.1)),
           border: TableBorder.all(color: Colors.grey[300]!),
           columns: [
             DataColumn(label: Text('Date', style: GoogleFonts.outfit(fontWeight: FontWeight.bold))),
@@ -330,9 +333,9 @@ class _ExamRoutineScreenState extends State<ExamRoutineScreen> {
                   return DataCell(
                     _isEditMode
                         ? DragTarget<String>(
-                            onAccept: (data) {
+                            onAcceptWithDetails: (details) {
                               setState(() {
-                                _routineAssignments[day]![sittingIndex] = data;
+                                _routineAssignments[day]![sittingIndex] = details.data;
                               });
                             },
                             builder: (context, candidateData, rejectedData) {
@@ -477,12 +480,12 @@ class _ExamRoutineScreenState extends State<ExamRoutineScreen> {
                           _isRoutineCreated = false;
                           _isEditMode = false;
                         }),
-                        child: Text('Reset / Re-create Routine'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.grey[600],
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
+                        child: Text('Reset / Re-create Routine'),
                       ),
                     ),
                   ],

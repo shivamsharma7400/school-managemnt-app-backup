@@ -18,8 +18,6 @@ class AppTheme {
         onSecondary: AppColors.onSecondary,
         onSurface: AppColors.onSurface,
         onError: AppColors.onError,
-        background: AppColors.background,
-        onBackground: AppColors.onBackground,
       ),
       textTheme: GoogleFonts.interTextTheme(ThemeData.light().textTheme).apply(
         bodyColor: AppColors.onBackground,
@@ -107,8 +105,6 @@ class AppTheme {
         onSecondary: AppColors.darkOnSecondary,
         onSurface: AppColors.darkOnSurface,
         onError: AppColors.darkOnError,
-        background: AppColors.darkBackground,
-        onBackground: AppColors.darkOnBackground,
       ),
       textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme).apply(
         bodyColor: AppColors.darkOnBackground,
@@ -190,7 +186,6 @@ class AppTheme {
         primary: AppColors.modernPrimary,
         secondary: AppColors.modernSecondary,
         surface: AppColors.cardBackground,
-        background: AppColors.dashboardBackground,
         onPrimary: Colors.white,
         onSurface: AppColors.onBackground,
       ),

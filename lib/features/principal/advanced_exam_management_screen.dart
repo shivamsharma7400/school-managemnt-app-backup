@@ -11,7 +11,7 @@ import 'mark_sheet_screen.dart';
 class AdvancedExamManagementScreen extends StatelessWidget {
   final ScheduledExam exam;
 
-  const AdvancedExamManagementScreen({Key? key, required this.exam}) : super(key: key);
+  const AdvancedExamManagementScreen({super.key, required this.exam});
 
   @override
   Widget build(BuildContext context) {

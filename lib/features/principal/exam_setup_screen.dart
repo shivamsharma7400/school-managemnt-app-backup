@@ -7,6 +7,8 @@ import '../../data/models/scheduled_exam_model.dart';
 import 'exam_management_detail_screen.dart';
 
 class ExamSetupScreen extends StatefulWidget {
+  const ExamSetupScreen({super.key});
+
   @override
   _ExamSetupScreenState createState() => _ExamSetupScreenState();
 }

@@ -44,7 +44,7 @@ class AppColors {
 
 class AppConstants {
   static const List<String> schoolClasses = [
-    '1', '2', '3', '4', '5', '6', '7', '8'
+    'NUR', 'LKG', 'UKG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'
   ];
   static const String youtubeApiKey = 'AIzaSyDrEPFqGTCHyzaSL6E5VfPrKZCQaaTj6DE'; // Provided by user
   static const String googleMapsApiKey = 'AIzaSyA1_wa2YHD_NA3ImtlBmhwLiAQmnRoygV8'; // From AndroidManifest
@@ -52,6 +52,10 @@ class AppConstants {
 
 class AppStrings {
   static const String appName = 'Veena Public School';
+  static const String schoolAddress = 'KHIDDI, RAJOUN, BANKA (BIHAR) - 813107'; 
+  static const String schoolPhone = '+91 91550 56860'; // Typical for this school, but keeping user provided if any
+  static const String schoolEmail = 'veenapublicschool@gmail.com'; // More typical than .com domain
+  static const String aiAgentName = 'Veena AI Assist';
   static const String login = 'Login';
   static const String register = 'Register';
   static const String email = 'Email';

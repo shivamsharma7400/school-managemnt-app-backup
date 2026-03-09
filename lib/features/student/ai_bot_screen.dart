@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../data/services/ai_service.dart';
 import '../../data/services/chat_database_service.dart';
-import '../../data/services/school_config_service.dart';
 import '../../core/constants/app_constants.dart';
 
 class AIBotScreen extends StatefulWidget {
@@ -146,13 +146,11 @@ class _AIBotScreenState extends State<AIBotScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final config = Provider.of<SchoolConfigService>(context);
-
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         title: Text(
-          config.aiAgentName,
+          AppStrings.aiAgentName,
           style: GoogleFonts.poppins(
             color: Colors.black87,
             fontSize: 18,
@@ -262,7 +260,7 @@ class _AIBotScreenState extends State<AIBotScreen> {
     );
   }
 
-    final config = Provider.of<SchoolConfigService>(context, listen: false);
+  Widget _buildEmptyState() {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -278,7 +276,7 @@ class _AIBotScreenState extends State<AIBotScreen> {
           ),
           const SizedBox(height: 20),
           Text(
-            config.aiAgentName,
+            AppStrings.aiAgentName,
             style: GoogleFonts.poppins(
               color: Colors.black87,
               fontSize: 24,
@@ -311,7 +309,7 @@ class _AIBotScreenState extends State<AIBotScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  isAi ? Provider.of<SchoolConfigService>(context, listen: false).aiAgentName : 'You',
+                  isAi ? AppStrings.aiAgentName : 'You',
                   style: GoogleFonts.inter(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,

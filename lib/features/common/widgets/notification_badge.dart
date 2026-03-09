@@ -5,10 +5,10 @@ class GlowingBadge extends StatefulWidget {
   final double size;
 
   const GlowingBadge({
-    Key? key,
+    super.key,
     this.color = Colors.red,
     this.size = 12.0,
-  }) : super(key: key);
+  });
 
   @override
   _GlowingBadgeState createState() => _GlowingBadgeState();

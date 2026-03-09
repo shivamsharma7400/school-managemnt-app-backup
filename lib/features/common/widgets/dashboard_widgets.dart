@@ -11,7 +11,6 @@ import 'package:intl/intl.dart';
 import 'package:vps/data/services/class_service.dart';
 import 'package:vps/data/models/class_model.dart';
 import 'package:vps/features/student/student_bus_tracker_screen.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:vps/features/principal/user_management_screen.dart';
 import 'package:rxdart/rxdart.dart';
@@ -26,7 +25,7 @@ class MetricCard extends StatelessWidget {
   final double? trend;
   final VoidCallback? onTap;
 
-  const MetricCard({
+  const MetricCard({super.key, 
     required this.title,
     required this.value,
     this.subtitle = '',
@@ -127,7 +126,7 @@ class ActionCard extends StatelessWidget {
   final Color badgeColor;
   final VoidCallback onTap;
 
-  const ActionCard({
+  const ActionCard({super.key, 
     required this.title,
     required this.description,
     required this.badgeText,
@@ -200,7 +199,7 @@ class AnnouncementCard extends StatelessWidget {
   final String date;
   final String type;
 
-  const AnnouncementCard({
+  const AnnouncementCard({super.key, 
     required this.title,
     required this.date,
     required this.type,
@@ -291,6 +290,8 @@ class AnnouncementCard extends StatelessWidget {
 }
 
 class AttendancePieChartCard extends StatelessWidget {
+  const AttendancePieChartCard({super.key});
+
   @override
   Widget build(BuildContext context) {
     final userService = Provider.of<UserService>(context, listen: false);
@@ -447,6 +448,8 @@ class AttendancePieChartCard extends StatelessWidget {
 }
 
 class FeeCollectionMetricCard extends StatefulWidget {
+  const FeeCollectionMetricCard({super.key});
+
   @override
   _FeeCollectionMetricCardState createState() => _FeeCollectionMetricCardState();
 }
@@ -534,6 +537,8 @@ class _FeeCollectionMetricCardState extends State<FeeCollectionMetricCard> {
 }
 
 class BusStatusMapCard extends StatefulWidget {
+  const BusStatusMapCard({super.key});
+
   @override
   _BusStatusMapCardState createState() => _BusStatusMapCardState();
 }
@@ -662,6 +667,8 @@ class _BusStatusMapCardState extends State<BusStatusMapCard> with SingleTickerPr
 }
 
 class PendingApprovalsMetricCard extends StatelessWidget {
+  const PendingApprovalsMetricCard({super.key});
+
   @override
   Widget build(BuildContext context) {
     final userService = Provider.of<UserService>(context);
@@ -751,6 +758,8 @@ class PendingApprovalsMetricCard extends StatelessWidget {
 }
 
 class AttendanceStatusCard extends StatelessWidget {
+  const AttendanceStatusCard({super.key});
+
   @override
   Widget build(BuildContext context) {
     final attendanceService = Provider.of<AttendanceService>(context);
@@ -765,6 +774,7 @@ class AttendanceStatusCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
+
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -806,7 +816,12 @@ class AttendanceStatusCard extends StatelessWidget {
                     }
                     
                     final classes = classSnapshot.data ?? [];
-                    classes.sort((a, b) => a.name.compareTo(b.name));
+                    classes.sort((a, b) {
+                      final indexA = AppConstants.schoolClasses.indexOf(a.name);
+                      final indexB = AppConstants.schoolClasses.indexOf(b.name);
+                      if (indexA != -1 && indexB != -1) return indexA.compareTo(indexB);
+                      return a.name.compareTo(b.name);
+                    });
 
                     // Add Teachers and Staff to the check list
                     final List<Map<String, dynamic>> allTargets = classes.map((c) => {

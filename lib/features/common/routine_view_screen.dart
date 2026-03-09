@@ -5,9 +5,10 @@ import '../../data/services/routine_service.dart';
 
 import 'package:flutter_linkify/flutter_linkify.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../core/utils/drive_helper.dart';
 
 class RoutineViewScreen extends StatelessWidget {
+  const RoutineViewScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
@@ -127,7 +128,7 @@ class _RoutineList extends StatelessWidget {
                           child: SingleChildScrollView(
                             scrollDirection: Axis.horizontal,
                             child: DataTable(
-                              headingRowColor: MaterialStateProperty.all(Colors.blue.shade50),
+                              headingRowColor: WidgetStateProperty.all(Colors.blue.shade50),
                               columns: List<String>.from(routine['tableData']['columns'] ?? [])
                                   .map((c) => DataColumn(
                                         label: Text(c, style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue.shade900)),

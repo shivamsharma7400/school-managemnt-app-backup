@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/ai_service.dart';
 import 'package:intl/intl.dart';
 import '../../../data/models/leave_request.dart';
 import '../../../data/services/leave_service.dart';
-import '../../../core/constants/app_constants.dart';
 
 class ApplyLeaveScreen extends StatefulWidget {
+  const ApplyLeaveScreen({super.key});
+
   @override
   _ApplyLeaveScreenState createState() => _ApplyLeaveScreenState();
 }

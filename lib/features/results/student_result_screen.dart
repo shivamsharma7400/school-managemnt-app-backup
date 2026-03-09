@@ -4,7 +4,6 @@ import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../data/services/result_service.dart';
 import '../../data/services/auth_service.dart';
-import '../../data/services/school_config_service.dart';
 import '../../data/models/result_model.dart';
 import '../../core/constants/app_constants.dart';
 
@@ -16,13 +15,13 @@ class StudentResultScreen extends StatelessWidget {
   final String? studentAdmNo;
 
   const StudentResultScreen({
-    Key? key, 
+    super.key, 
     this.studentId, 
     this.studentName, 
     this.studentClass, 
     this.studentRoll,
     this.studentAdmNo,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -126,21 +125,16 @@ class StudentResultScreen extends StatelessWidget {
             ),
             child: Row(
               children: [
-                if (Provider.of<SchoolConfigService>(context).schoolLogoUrl.isNotEmpty)
-                  CircleAvatar(
-                    backgroundImage: NetworkImage(Provider.of<SchoolConfigService>(context).schoolLogoUrl),
-                    radius: 20,
-                    backgroundColor: Colors.transparent,
-                  )
-                else
-                  Container(
-                    padding: EdgeInsets.all(8),
+                   Container(
+                    width: 40,
+                    height: 40,
                     decoration: BoxDecoration(
-                      color: Colors.white,
                       shape: BoxShape.circle,
-                      boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4)],
+                      image: DecorationImage(
+                        image: AssetImage('assets/logos/logo.png'),
+                        fit: BoxFit.cover,
+                      ),
                     ),
-                    child: Icon(Icons.school, color: AppColors.primary, size: 32),
                   ),
                 SizedBox(width: 16),
                 Expanded(
@@ -148,7 +142,7 @@ class StudentResultScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        Provider.of<SchoolConfigService>(context).schoolName.toUpperCase(),
+                        AppStrings.appName.toUpperCase(),
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
@@ -267,7 +261,7 @@ class StudentResultScreen extends StatelessWidget {
                       ),
                     ],
                   );
-                }).toList(),
+                }),
               ],
             ),
           ),

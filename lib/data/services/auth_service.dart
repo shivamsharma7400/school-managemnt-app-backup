@@ -47,10 +47,11 @@ class AuthService extends ChangeNotifier {
     try {
       DocumentSnapshot doc = await _firestore.collection('users').doc(uid).get();
       if (doc.exists) {
-        _userData = doc.data() as Map<String, dynamic>?;
-        _role = doc['role'];
-        _classId = doc['classId']; // Fetch classId
-        _isApproved = doc['isApproved'] ?? false; // Fetch isApproved status
+        final data = doc.data() as Map<String, dynamic>;
+        _userData = data;
+        _role = data['role'];
+        _classId = data['classId']; // Fetch classId
+        _isApproved = data['isApproved'] ?? false; // Fetch isApproved status
         
         // Ensure name is up to date if missing in Auth (for old users)
         if (_user != null && (_user!.displayName == null || _user!.displayName!.isEmpty)) {

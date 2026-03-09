@@ -5,10 +5,11 @@ import '../../data/services/class_service.dart';
 import '../../data/services/user_service.dart';
 import '../../data/models/class_model.dart';
 import '../../data/services/auth_service.dart';
+import '../../core/constants/app_constants.dart';
 
 class MarkAttendanceScreen extends StatefulWidget {
   final int initialIndex;
-  MarkAttendanceScreen({this.initialIndex = 0});
+  const MarkAttendanceScreen({super.key, this.initialIndex = 0});
 
   @override
   _MarkAttendanceScreenState createState() => _MarkAttendanceScreenState();
@@ -18,7 +19,7 @@ class _MarkAttendanceScreenState extends State<MarkAttendanceScreen> with Single
   DateTime _selectedDate = DateTime.now();
   String? _selectedClassId;
   bool _isLoading = false;
-  Map<String, String> _attendanceStatus = {};
+  final Map<String, String> _attendanceStatus = {};
   
   // Toggle for Principal/Management
   late TabController _tabController;
@@ -137,9 +138,15 @@ class _MarkAttendanceScreenState extends State<MarkAttendanceScreen> with Single
           builder: (context, snapshot) {
             if (!snapshot.hasData) return LinearProgressIndicator();
             final classes = snapshot.data!;
+            classes.sort((a, b) {
+              final indexA = AppConstants.schoolClasses.indexOf(a.name);
+              final indexB = AppConstants.schoolClasses.indexOf(b.name);
+              if (indexA != -1 && indexB != -1) return indexA.compareTo(indexB);
+              return a.name.compareTo(b.name);
+            });
             
             return DropdownButtonFormField<String>(
-              value: _selectedClassId,
+              initialValue: _selectedClassId,
               decoration: InputDecoration(
                 labelText: 'Select Class', 
                 border: OutlineInputBorder(),
@@ -184,8 +191,9 @@ class _MarkAttendanceScreenState extends State<MarkAttendanceScreen> with Single
       builder: (context, markedSnapshot) {
         final markedClassIds = markedSnapshot.data ?? [];
         final String currentTargetId;
-        if (_isTeacherMode) currentTargetId = 'TEACHERS';
-        else if (_isStaffMode) currentTargetId = 'Drivers';
+        if (_isTeacherMode) {
+          currentTargetId = 'TEACHERS';
+        } else if (_isStaffMode) currentTargetId = 'Drivers';
         else currentTargetId = _selectedClassId ?? '';
 
         final bool isAlreadyMarked = markedClassIds.contains(currentTargetId);

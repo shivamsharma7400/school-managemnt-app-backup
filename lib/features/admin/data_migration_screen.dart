@@ -245,7 +245,7 @@ class _DataMigrationScreenState extends State<DataMigrationScreen> {
           scrollDirection: Axis.horizontal,
           child: SingleChildScrollView(
             child: DataTable(
-              headingRowColor: MaterialStateProperty.all(Colors.grey[50]),
+              headingRowColor: WidgetStateProperty.all(Colors.grey[50]),
               columns: headers.map((h) => DataColumn(label: Text(h, style: const TextStyle(fontWeight: FontWeight.bold)))).toList(),
               rows: _previewData.take(5).map((row) {
                 return DataRow(

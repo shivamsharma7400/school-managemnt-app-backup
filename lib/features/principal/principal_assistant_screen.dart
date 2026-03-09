@@ -5,17 +5,18 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../data/services/ai_service.dart';
-import 'package:vps/core/constants/app_constants.dart';
 import '../../data/services/auth_service.dart';
 
 extension StringExtension on String {
   String capitalize() {
-    if (this.isEmpty) return this;
-    return "${this[0].toUpperCase()}${this.substring(1)}";
+    if (isEmpty) return this;
+    return "${this[0].toUpperCase()}${substring(1)}";
   }
 }
 
 class PrincipalAssistantScreen extends StatelessWidget {
+  const PrincipalAssistantScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
     final role = Provider.of<AuthService>(context, listen: false).role ?? 'Principal';

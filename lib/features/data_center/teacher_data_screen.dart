@@ -5,6 +5,8 @@ import '../../data/services/class_service.dart';
 import '../../data/models/class_model.dart';
 
 class TeacherDataScreen extends StatefulWidget {
+  const TeacherDataScreen({super.key});
+
   @override
   _TeacherDataScreenState createState() => _TeacherDataScreenState();
 }

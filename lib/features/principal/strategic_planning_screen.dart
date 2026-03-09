@@ -1,22 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:table_calendar/table_calendar.dart';
-import 'package:fl_chart/fl_chart.dart';
 import 'package:vps/features/common/widgets/modern_layout.dart';
-import 'package:vps/core/constants/app_constants.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:vps/data/services/attendance_service.dart';
 import 'package:vps/data/services/user_service.dart';
 import 'package:vps/data/services/fee_service.dart';
 import 'package:vps/data/models/attendance_record.dart';
-import 'package:rxdart/rxdart.dart';
 
 import 'package:vps/data/services/strategic_planning_service.dart';
 import 'package:vps/data/models/strategic_task.dart';
 
 class StrategicPlanningScreen extends StatefulWidget {
-  const StrategicPlanningScreen({Key? key}) : super(key: key);
+  const StrategicPlanningScreen({super.key});
 
   @override
   State<StrategicPlanningScreen> createState() => _StrategicPlanningScreenState();
@@ -175,7 +172,7 @@ class _StrategicPlanningScreenState extends State<StrategicPlanningScreen> {
               
               // Format simply like '82%' or '45k/50k' if space allows. Keeping it simple '82%' as per original design, 
               // or maybe '82% (45k)'
-              String displayValue = "$percentageDisplay";
+              String displayValue = percentageDisplay;
 
               return _buildKPICard('Budget Health', displayValue, Icons.account_balance_wallet_outlined, Colors.orange, percentage);
             }
@@ -349,14 +346,14 @@ class _StrategicPlanningScreenState extends State<StrategicPlanningScreen> {
             ),
             SizedBox(height: 16),
             DropdownButtonFormField<String>(
-              value: priority,
+              initialValue: priority,
               items: ['Normal', 'High', 'Urgent'].map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(),
               onChanged: (val) => priority = val!,
               decoration: InputDecoration(labelText: 'Priority'),
             ),
             SizedBox(height: 16),
              DropdownButtonFormField<String>(
-              value: column,
+              initialValue: column,
               items: ['To Do', 'In Progress'].map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
               onChanged: (val) => column = val!,
               decoration: InputDecoration(labelText: 'Status'),
@@ -526,7 +523,7 @@ class _StrategicPlanningScreenState extends State<StrategicPlanningScreen> {
                  ),
             ],
           ),
-        )).toList(),
+        )),
       ],
     );
   }
@@ -573,6 +570,8 @@ class _StrategicPlanningScreenState extends State<StrategicPlanningScreen> {
 }
 
 class PreviousWorkScreen extends StatefulWidget {
+  const PreviousWorkScreen({super.key});
+
   @override
   _PreviousWorkScreenState createState() => _PreviousWorkScreenState();
 }

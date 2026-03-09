@@ -6,11 +6,11 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../data/services/fee_service.dart';
 import '../../data/services/user_service.dart';
-import '../../data/models/fee_record.dart';
-import '../fees/fee_management_screen.dart';
 import '../../data/services/school_info_service.dart';
 
 class SchoolDataAnalysisScreen extends StatefulWidget {
+  const SchoolDataAnalysisScreen({super.key});
+
   @override
   _SchoolDataAnalysisScreenState createState() => _SchoolDataAnalysisScreenState();
 }

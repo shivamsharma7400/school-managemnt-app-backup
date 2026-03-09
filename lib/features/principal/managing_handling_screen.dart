@@ -4,7 +4,7 @@ import 'package:vps/features/common/widgets/modern_layout.dart';
 import 'package:vps/core/constants/app_constants.dart';
 
 class ManagingHandlingScreen extends StatelessWidget {
-  const ManagingHandlingScreen({Key? key}) : super(key: key);
+  const ManagingHandlingScreen({super.key});
 
   @override
   Widget build(BuildContext context) {

@@ -21,7 +21,7 @@ class StudentQueryService extends ChangeNotifier {
       });
     } catch (e) {
       print('Error submitting query: $e');
-      throw e;
+      rethrow;
     }
   }
 

@@ -3,6 +3,8 @@ import '../../main.dart'; // For AuthWrapper
 import '../../core/constants/app_constants.dart';
 
 class OnboardingScreen extends StatefulWidget {
+  const OnboardingScreen({super.key});
+
   @override
   _OnboardingScreenState createState() => _OnboardingScreenState();
 }
@@ -98,10 +100,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       _pageController.nextPage(duration: Duration(milliseconds: 300), curve: Curves.ease);
                     }
                   },
-                  child: Text(_currentPage == _pages.length - 1 ? "Get Started" : "Next"),
                   style: ElevatedButton.styleFrom(
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
                   ),
+                  child: Text(_currentPage == _pages.length - 1 ? "Get Started" : "Next"),
                 ),
               ),
             ),

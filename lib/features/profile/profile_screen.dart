@@ -5,10 +5,10 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../data/services/auth_service.dart';
 import '../../data/services/user_service.dart';
 import '../settings/settings_screen.dart';
-import '../admin/advanced_settings_screen.dart';
 import '../../core/utils/drive_helper.dart';
 
 class ProfileScreen extends StatefulWidget {
+  const ProfileScreen({super.key});
   @override
   _ProfileScreenState createState() => _ProfileScreenState();
 }
@@ -167,7 +167,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _showPhotoUpdateDialog() {
-    final TextEditingController _linkController = TextEditingController();
+    final TextEditingController linkController = TextEditingController();
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -179,7 +179,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Text('Paste Google Drive Image Link:', style: GoogleFonts.poppins(fontSize: 14)),
             const SizedBox(height: 12),
             TextField(
-              controller: _linkController,
+              controller: linkController,
               decoration: InputDecoration(
                 hintText: 'https://drive.google.com/...',
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
@@ -200,7 +200,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           ElevatedButton(
             onPressed: () async {
-              String rawUrl = _linkController.text.trim();
+              String rawUrl = linkController.text.trim();
               if (rawUrl.isNotEmpty) {
                 Navigator.pop(context);
                 setState(() => _isLoading = true);
@@ -748,7 +748,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
-          value: _selectedGender,
+          initialValue: _selectedGender,
           decoration: InputDecoration(
             isDense: true,
             contentPadding: EdgeInsets.zero,

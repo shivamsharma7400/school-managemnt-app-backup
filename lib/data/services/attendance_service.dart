@@ -125,8 +125,9 @@ class AttendanceService extends ChangeNotifier {
             totalMarked += records.length;
             records.forEach((_, status) {
               final s = status.toLowerCase();
-              if (s == 'p' || s == 'present') present++;
-              else if (s == 'a' || s == 'absent') absent++;
+              if (s == 'p' || s == 'present') {
+                present++;
+              } else if (s == 'a' || s == 'absent') absent++;
             });
           }
 
@@ -167,8 +168,9 @@ class AttendanceService extends ChangeNotifier {
         totalMarked += records.length;
         records.forEach((_, status) {
           final s = status.toLowerCase();
-          if (s == 'p' || s == 'present') present++;
-          else if (s == 'a' || s == 'absent') absent++;
+          if (s == 'p' || s == 'present') {
+            present++;
+          } else if (s == 'a' || s == 'absent') absent++;
         });
       }
 

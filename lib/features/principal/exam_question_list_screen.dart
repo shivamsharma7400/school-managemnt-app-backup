@@ -14,7 +14,7 @@ import '../../data/models/scheduled_exam_model.dart';
 class ExamQuestionListScreen extends StatefulWidget {
   final ScheduledExam exam;
 
-  ExamQuestionListScreen({required this.exam});
+  const ExamQuestionListScreen({super.key, required this.exam});
 
   @override
   _ExamQuestionListScreenState createState() => _ExamQuestionListScreenState();
@@ -91,7 +91,12 @@ class _ExamQuestionListScreenState extends State<ExamQuestionListScreen> {
             }
 
             final classes = classSnapshot.data ?? [];
-            classes.sort((a, b) => a.name.compareTo(b.name));
+            classes.sort((a, b) {
+              final indexA = AppConstants.schoolClasses.indexOf(a.name);
+              final indexB = AppConstants.schoolClasses.indexOf(b.name);
+              if (indexA != -1 && indexB != -1) return indexA.compareTo(indexB);
+              return a.name.compareTo(b.name);
+            });
             final papers = paperSnapshot.data ?? [];
 
             // Calculate counts

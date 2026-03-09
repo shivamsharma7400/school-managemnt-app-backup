@@ -1,21 +1,20 @@
-
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import '../../data/services/routine_service.dart';
 import '../../data/services/auth_service.dart';
-import '../../data/services/school_config_service.dart';
-import '../../data/services/class_service.dart';
 import '../../data/services/time_table_pdf_service.dart';
 import '../common/widgets/class_dropdown.dart';
 import '../../core/utils/drive_helper.dart';
 import '../../core/constants/app_constants.dart';
+import '../../data/services/class_service.dart';
 import '../../data/services/bus_routine_service.dart';
 import '../../data/services/user_service.dart';
 import '../../data/services/bus_service.dart';
 import '../../data/models/bus_destination.dart';
 
 class RoutineManagementScreen extends StatelessWidget {
+  const RoutineManagementScreen({super.key});
   @override
   Widget build(BuildContext context) {
     final userRole = Provider.of<AuthService>(context).role;
@@ -74,7 +73,7 @@ class __TimeTableTabState extends State<_TimeTableTab> with AutomaticKeepAliveCl
   List<List<String>> _rows = [];
 
   void _showSetupDialog() {
-    final _numController = TextEditingController();
+    final numController = TextEditingController();
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -83,7 +82,7 @@ class __TimeTableTabState extends State<_TimeTableTab> with AutomaticKeepAliveCl
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
-              controller: _numController,
+              controller: numController,
               decoration: InputDecoration(
                 labelText: 'No. of Extra Columns',
                 helperText: '"Time Duration" will be added automatically',
@@ -97,7 +96,7 @@ class __TimeTableTabState extends State<_TimeTableTab> with AutomaticKeepAliveCl
           TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancel')),
           ElevatedButton(
             onPressed: () {
-              final numCols = int.tryParse(_numController.text) ?? 0;
+              final numCols = int.tryParse(numController.text) ?? 0;
               Navigator.pop(context, numCols);
             },
             child: Text('Next'),
@@ -172,10 +171,9 @@ class __TimeTableTabState extends State<_TimeTableTab> with AutomaticKeepAliveCl
 
   void _printTable() {
     if (_columns.isEmpty) return;
-    final config = Provider.of<SchoolConfigService>(context, listen: false);
     TimeTablePdfService.generate(
-      schoolName: config.schoolName,
-      address: "Main Campus, City Square, State - 123456", // Placeholder or fetch if possible
+      schoolName: AppStrings.appName,
+      address: AppStrings.schoolAddress, // Placeholder or fetch if possible
       columns: _columns,
       rows: _rows,
     );
@@ -369,7 +367,7 @@ class __TimeTableTabState extends State<_TimeTableTab> with AutomaticKeepAliveCl
                           child: ConstrainedBox(
                             constraints: BoxConstraints(minWidth: MediaQuery.of(context).size.width - 40),
                             child: DataTable(
-                              headingRowColor: MaterialStateProperty.all(Color(0xFFEEF2FF)),
+                              headingRowColor: WidgetStateProperty.all(Color(0xFFEEF2FF)),
                               dataRowHeight: 65,
                               headingRowHeight: 50,
                               columnSpacing: 24,
@@ -521,7 +519,8 @@ class __TimeTableTabState extends State<_TimeTableTab> with AutomaticKeepAliveCl
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) return Center(child: CircularProgressIndicator());
                   final routines = snapshot.data ?? [];
-                  if (routines.isEmpty) return Center(
+                  if (routines.isEmpty) {
+                    return Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -540,6 +539,7 @@ class __TimeTableTabState extends State<_TimeTableTab> with AutomaticKeepAliveCl
                       ],
                     )
                   );
+                  }
                   
                   return ListView.builder(
                     padding: EdgeInsets.all(20),
@@ -647,10 +647,9 @@ class _RoutineList extends StatelessWidget {
                   padding: const EdgeInsets.all(16.0),
                   child: ElevatedButton.icon(
                     onPressed: () {
-                      final config = Provider.of<SchoolConfigService>(context, listen: false);
                       TimeTablePdfService.generateBulk(
-                        schoolName: config.schoolName,
-                        address: "Main Campus, City Square, State - 123456",
+                        schoolName: AppStrings.appName,
+                        address: AppStrings.schoolAddress,
                         routines: routines,
                       );
                     },
@@ -744,7 +743,7 @@ class _RoutineList extends StatelessWidget {
                             child: SingleChildScrollView(
                               scrollDirection: Axis.horizontal,
                               child: DataTable(
-                                headingRowColor: MaterialStateProperty.all(Colors.indigo.shade900),
+                                headingRowColor: WidgetStateProperty.all(Colors.indigo.shade900),
                                 dataRowMinHeight: 48,
                                 dataRowMaxHeight: 60,
                                 horizontalMargin: 20,
@@ -765,7 +764,7 @@ class _RoutineList extends StatelessWidget {
                                           : (row as List);
 
                                       return DataRow(
-                                        color: MaterialStateProperty.resolveWith((states) {
+                                        color: WidgetStateProperty.resolveWith((states) {
                                           final day = cells[0].toString().toLowerCase();
                                           return day == 'sunday' ? Colors.red.shade50 : null;
                                         }),
@@ -829,13 +828,13 @@ class _RoutineList extends StatelessWidget {
   }
 
   void _showClassRoutineSetupDialog(BuildContext context) {
-    int? _periodCount;
-    List<TextEditingController> _timingControllers = [];
-    String _holiday = "Sunday";
-    bool _isHalfDay = false;
-    String _halfDayName = "Saturday";
-    int _halfDayPeriodCount = 4;
-    bool _isGenerating = false;
+    int? periodCount;
+    List<TextEditingController> timingControllers = [];
+    String holiday = "Sunday";
+    bool isHalfDay = false;
+    String halfDayName = "Saturday";
+    int halfDayPeriodCount = 4;
+    bool isGenerating = false;
 
     showDialog(
       context: context,
@@ -858,17 +857,17 @@ class _RoutineList extends StatelessWidget {
                     final count = int.tryParse(val);
                     if (count != null && count > 0) {
                       setState(() {
-                        _periodCount = count;
-                        _timingControllers = List.generate(count, (_) => TextEditingController());
+                        periodCount = count;
+                        timingControllers = List.generate(count, (_) => TextEditingController());
                       });
                     }
                   },
                 ),
-                if (_periodCount != null) ...[
+                if (periodCount != null) ...[
                   const SizedBox(height: 16),
                   Text('Set Period Timings', style: TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
-                  ...List.generate(_periodCount!, (index) => Padding(
+                  ...List.generate(periodCount!, (index) => Padding(
                     padding: const EdgeInsets.only(bottom: 12.0),
                     child: InkWell(
                       onTap: () async {
@@ -887,12 +886,12 @@ class _RoutineList extends StatelessWidget {
                         if (endTime == null) return;
 
                         setState(() {
-                          _timingControllers[index].text = "${startTime.format(context)} - ${endTime.format(context)}";
+                          timingControllers[index].text = "${startTime.format(context)} - ${endTime.format(context)}";
                         });
                       },
                       child: IgnorePointer(
                         child: TextField(
-                          controller: _timingControllers[index],
+                          controller: timingControllers[index],
                           decoration: InputDecoration(
                             labelText: 'Period ${index + 1} Duration',
                             hintText: 'Tap to select time',
@@ -906,34 +905,34 @@ class _RoutineList extends StatelessWidget {
                 ],
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
-                  value: _holiday,
+                  initialValue: holiday,
                   decoration: InputDecoration(labelText: 'Select Weekly Holiday', border: OutlineInputBorder()),
                   items: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
                       .map((day) => DropdownMenuItem(value: day, child: Text(day))).toList(),
-                  onChanged: (val) => setState(() => _holiday = val!),
+                  onChanged: (val) => setState(() => holiday = val!),
                 ),
                 const SizedBox(height: 16),
                 SwitchListTile(
                   title: Text('Half Day Configuration'),
-                  value: _isHalfDay,
-                  onChanged: (val) => setState(() => _isHalfDay = val),
+                  value: isHalfDay,
+                  onChanged: (val) => setState(() => isHalfDay = val),
                 ),
-                if (_isHalfDay) ...[
+                if (isHalfDay) ...[
                   DropdownButtonFormField<String>(
-                    value: _halfDayName,
+                    initialValue: halfDayName,
                     decoration: InputDecoration(labelText: 'Select Half Day', border: OutlineInputBorder()),
                     items: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
                         .map((day) => DropdownMenuItem(value: day, child: Text(day))).toList(),
-                    onChanged: (val) => setState(() => _halfDayName = val!),
+                    onChanged: (val) => setState(() => halfDayName = val!),
                   ),
                   const SizedBox(height: 16),
                   TextField(
                     decoration: InputDecoration(labelText: 'No. of periods for half-day', border: OutlineInputBorder()),
                     keyboardType: TextInputType.number,
-                    onChanged: (val) => setState(() => _halfDayPeriodCount = int.tryParse(val) ?? 4),
+                    onChanged: (val) => setState(() => halfDayPeriodCount = int.tryParse(val) ?? 4),
                   ),
                 ],
-                if (_isGenerating) 
+                if (isGenerating) 
                   Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: Center(child: CircularProgressIndicator()),
@@ -944,8 +943,8 @@ class _RoutineList extends StatelessWidget {
           actions: [
             TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancel')),
             ElevatedButton(
-              onPressed: _isGenerating || _periodCount == null ? null : () async {
-                setState(() => _isGenerating = true);
+              onPressed: isGenerating || periodCount == null ? null : () async {
+                setState(() => isGenerating = true);
                 try {
                   final classService = Provider.of<ClassService>(context, listen: false);
                   final routineService = Provider.of<RoutineService>(context, listen: false);
@@ -960,35 +959,41 @@ class _RoutineList extends StatelessWidget {
                     await routineService.deleteRoutine(doc.id);
                   }
 
-                  // 2. Fetch classes
-                  final classes = await classService.fetchAllClasses();
+                  // 2. Fetch standard classes from AppConstants
+                  final classes = AppConstants.schoolClasses.map((className) {
+                    // Create a dummy model or use class names to generate routines
+                    // Since routine generation only needs the class name for the title/desc
+                    return className; 
+                  }).toList();
+
                   
                   // 3. Prepare columns
                   final List<String> columns = ["DAYS"];
-                  for (int i = 0; i < _periodCount!; i++) {
-                    final timing = _timingControllers[i].text.trim();
+                  for (int i = 0; i < periodCount!; i++) {
+                    final timing = timingControllers[i].text.trim();
                     columns.add("${i + 1}${_getOrdinalSuffix(i + 1)} Period${timing.isNotEmpty ? ' ($timing)' : ''}");
                   }
 
                   final days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
                   
-                  for (final cls in classes) {
-                    final String title = "Class ${cls.name}";
-                    final String desc = "Weekly structured routine for ${cls.name}";
+                  for (final className in classes) {
+                    final String title = "Routine - $className";
+                    final String desc = "Weekly structured routine for $className";
+
                     
                     final List<Map<String, dynamic>> rows = [];
                     for (final day in days) {
-                      if (day == _holiday) continue;
+                      if (day == holiday) continue;
                       
                       final Map<String, dynamic> rowMap = {};
                       rowMap["0"] = day; // DAYS column
                       
-                      int periodsForToday = _periodCount!;
-                      if (_isHalfDay && day == _halfDayName) {
-                        periodsForToday = _halfDayPeriodCount;
+                      int periodsForToday = periodCount!;
+                      if (isHalfDay && day == halfDayName) {
+                        periodsForToday = halfDayPeriodCount;
                       }
                       
-                      for (int i = 0; i < _periodCount!; i++) {
+                      for (int i = 0; i < periodCount!; i++) {
                         if (i < periodsForToday) {
                           rowMap[(i + 1).toString()] = ""; // Empty cell for the period
                         } else {
@@ -1007,7 +1012,7 @@ class _RoutineList extends StatelessWidget {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Routines generated for ${classes.length} classes')));
                 } catch (e) {
-                  setState(() => _isGenerating = false);
+                  setState(() => isGenerating = false);
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
                 }
               },
@@ -1029,11 +1034,11 @@ class _RoutineList extends StatelessWidget {
     }
   }
   void _showAddDialog(BuildContext context) {
-    final _titleController = TextEditingController();
-    final _descController = TextEditingController();
-    final _imageController = TextEditingController();
-    String _selectedType = type;
-    String? _selectedClass; 
+    final titleController = TextEditingController();
+    final descController = TextEditingController();
+    final imageController = TextEditingController();
+    String selectedType = type;
+    String? selectedClass; 
 
     showDialog(
       context: context,
@@ -1047,17 +1052,17 @@ class _RoutineList extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.only(top: 16.0),
                   child: ClassDropdown(
-                    value: _selectedClass,
+                    value: selectedClass,
                     labelText: "Select Class",
-                    onChanged: (val) => setState(() => _selectedClass = val),
+                    onChanged: (val) => setState(() => selectedClass = val),
                   ),
                 )
               else
-                TextField(controller: _titleController, decoration: InputDecoration(labelText: 'Routine Title')),
+                TextField(controller: titleController, decoration: InputDecoration(labelText: 'Routine Title')),
               
-              TextField(controller: _descController, decoration: InputDecoration(labelText: 'Routine Details'), maxLines: 3),
+              TextField(controller: descController, decoration: InputDecoration(labelText: 'Routine Details'), maxLines: 3),
               const SizedBox(height: 8),
-              TextField(controller: _imageController, decoration: InputDecoration(labelText: 'Image URL (Google Drive)')),
+              TextField(controller: imageController, decoration: InputDecoration(labelText: 'Image URL (Google Drive)')),
             ],
           ),
           actions: [
@@ -1066,16 +1071,16 @@ class _RoutineList extends StatelessWidget {
               onPressed: () {
                 String title = "";
                 if (type == 'class') {
-                  if (_selectedClass == null) return; 
-                  title = "Class $_selectedClass";
+                  if (selectedClass == null) return; 
+                  title = "Class $selectedClass";
                 } else {
-                  title = _titleController.text;
+                  title = titleController.text;
                 }
 
-                if (title.isNotEmpty && _descController.text.isNotEmpty) {
-                  final String? directUrl = DriveHelper.getDirectDriveUrl(_imageController.text);
+                if (title.isNotEmpty && descController.text.isNotEmpty) {
+                  final String? directUrl = DriveHelper.getDirectDriveUrl(imageController.text);
                   Provider.of<RoutineService>(context, listen: false)
-                      .addRoutine(title, _descController.text, type, imageUrl: directUrl);
+                      .addRoutine(title, descController.text, type, imageUrl: directUrl);
                   Navigator.pop(context);
                 }
               },
@@ -1088,9 +1093,9 @@ class _RoutineList extends StatelessWidget {
   }
 
   void _showEditDialog(BuildContext context, Map<String, dynamic> routine) {
-    final _titleController = TextEditingController(text: routine['title']);
-    final _descController = TextEditingController(text: routine['description']);
-    final _imageController = TextEditingController(text: routine['imageUrl']);
+    final titleController = TextEditingController(text: routine['title']);
+    final descController = TextEditingController(text: routine['description']);
+    final imageController = TextEditingController(text: routine['imageUrl']);
 
     showDialog(
       context: context,
@@ -1099,19 +1104,19 @@ class _RoutineList extends StatelessWidget {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(controller: _titleController, decoration: InputDecoration(labelText: 'Title')),
-            TextField(controller: _descController, decoration: InputDecoration(labelText: 'Routine Details'), maxLines: 5),
+            TextField(controller: titleController, decoration: InputDecoration(labelText: 'Title')),
+            TextField(controller: descController, decoration: InputDecoration(labelText: 'Routine Details'), maxLines: 5),
             const SizedBox(height: 8),
-            TextField(controller: _imageController, decoration: InputDecoration(labelText: 'Image URL')),
+            TextField(controller: imageController, decoration: InputDecoration(labelText: 'Image URL')),
           ],
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancel')),
           ElevatedButton(
            onPressed: () {
-               final String? directUrl = DriveHelper.getDirectDriveUrl(_imageController.text);
+               final String? directUrl = DriveHelper.getDirectDriveUrl(imageController.text);
                Provider.of<RoutineService>(context, listen: false)
-                  .updateRoutine(routine['id'], _titleController.text, _descController.text, imageUrl: directUrl);
+                  .updateRoutine(routine['id'], titleController.text, descController.text, imageUrl: directUrl);
                Navigator.pop(context);
             },
             child: Text('Save'),
@@ -1147,7 +1152,7 @@ class _RoutineList extends StatelessWidget {
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
           title: Text('Edit Routine Table: ${routine['title']}'),
-          content: Container(
+          content: SizedBox(
             width: double.maxFinite,
             child: SingleChildScrollView(
               scrollDirection: Axis.vertical,
@@ -1283,7 +1288,7 @@ class _BusRoutineTabState extends State<_BusRoutineTab> {
                 ),
                 child: DropdownButtonHideUnderline(
                   child: DropdownButtonFormField<String>(
-                    value: _selectedDriverId,
+                    initialValue: _selectedDriverId,
                     decoration: InputDecoration(
                       border: InputBorder.none,
                       prefixIcon: Icon(Icons.person_pin, color: Colors.indigo),
@@ -1354,10 +1359,6 @@ class _BusRoutineTabState extends State<_BusRoutineTab> {
                   Text("Direction", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey.shade600)),
                   SizedBox(height: 8),
                   ToggleButtons(
-                    children: [
-                      Padding(padding: EdgeInsets.symmetric(horizontal: 16), child: Text("Arrival")),
-                      Padding(padding: EdgeInsets.symmetric(horizontal: 16), child: Text("Departure")),
-                    ],
                     isSelected: [_selectedType == 'Arrival', _selectedType == 'Departure'],
                     onPressed: (index) {
                       setState(() {
@@ -1370,6 +1371,10 @@ class _BusRoutineTabState extends State<_BusRoutineTab> {
                     fillColor: Colors.indigo,
                     color: Colors.indigo.shade900,
                     constraints: BoxConstraints(minHeight: 40),
+                    children: [
+                      Padding(padding: EdgeInsets.symmetric(horizontal: 16), child: Text("Arrival")),
+                      Padding(padding: EdgeInsets.symmetric(horizontal: 16), child: Text("Departure")),
+                    ],
                   ),
                 ],
               ),

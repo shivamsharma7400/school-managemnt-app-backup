@@ -6,11 +6,12 @@ import '../../data/services/fee_service.dart';
 import '../../data/models/fee_record.dart';
 import '../../data/services/auth_service.dart';
 import '../../data/services/payment_service.dart';
-import '../../data/services/school_config_service.dart';
 import '../../core/constants/app_constants.dart';
 import '../../data/services/receipt_service.dart';
 
 class FeeStatusScreen extends StatefulWidget {
+  const FeeStatusScreen({super.key});
+
   @override
   _FeeStatusScreenState createState() => _FeeStatusScreenState();
 }
@@ -349,8 +350,6 @@ class _FeeStatusScreenState extends State<FeeStatusScreen> {
     final userData = userDoc.data();
     final String phone = userData?['phone'] ?? '';
     final String email = userData?['email'] ?? '';
-    
-    final schoolName = Provider.of<SchoolConfigService>(context, listen: false).schoolName;
 
     _paymentService.openCheckout(
       feeId: fee.id,
@@ -360,7 +359,7 @@ class _FeeStatusScreenState extends State<FeeStatusScreen> {
       email: email,
       classId: fee.classId,
       userId: fee.userId,
-      schoolName: schoolName,
+      schoolName: AppStrings.appName,
       onResult: (success, msg) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));

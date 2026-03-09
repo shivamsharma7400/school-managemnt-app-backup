@@ -7,13 +7,11 @@ import '../../data/models/scheduled_exam_model.dart';
 import '../../data/services/auth_service.dart';
 import '../../data/services/user_service.dart';
 import '../../data/services/student_exam_pdf_service.dart';
-import '../../data/services/school_config_service.dart';
-import '../results/student_result_screen.dart';
 
 class StudentExamDetailScreen extends StatefulWidget {
   final ScheduledExam exam;
 
-  const StudentExamDetailScreen({Key? key, required this.exam}) : super(key: key);
+  const StudentExamDetailScreen({super.key, required this.exam});
 
   @override
   _StudentExamDetailScreenState createState() => _StudentExamDetailScreenState();
@@ -154,8 +152,6 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen> {
                     );
                     
                     try {
-                      final schoolConfig = Provider.of<SchoolConfigService>(context, listen: false);
-                      
                       // 1. Fetch class results for this exam
                       final classId = _studentData!['classId'];
                       final resultDoc = await FirebaseFirestore.instance
@@ -200,7 +196,6 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen> {
                         _studentData!,
                         studentMarks,
                         previewSubjects,
-                        schoolConfig
                       );
 
                     } catch (e) {

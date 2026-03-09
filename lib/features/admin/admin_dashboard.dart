@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../data/services/auth_service.dart';
 import '../../data/services/user_service.dart';
 import '../common/widgets/modern_layout.dart';
 import '../common/widgets/dashboard_widgets.dart';
-import 'package:vps/core/constants/app_constants.dart';
 import '../principal/principal_assistant_screen.dart';
 import '../principal/user_management_screen.dart';
 import '../communication/announcement_screen.dart';
@@ -36,6 +34,8 @@ class DashboardData {
 }
 
 class AdminDashboard extends StatelessWidget {
+  const AdminDashboard({super.key});
+
   @override
   Widget build(BuildContext context) {
     return ModernLayout(
@@ -126,7 +126,7 @@ class AdminDashboard extends StatelessWidget {
             complaintService.getPendingComplaintsCount(),
             Provider.of<StrategicPlanningService>(context, listen: false).getActiveTasks(),
             (a, b, c, d) {
-              final tasks = d as List<StrategicTask>;
+              final tasks = d;
               final today = DateTime.now();
               final todaysTasks = tasks.where((t) {
                 return t.date.year == today.year && 

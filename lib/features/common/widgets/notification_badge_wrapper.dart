@@ -7,7 +7,7 @@ import '../../notification/notification_screen.dart';
 class NotificationBadgeWrapper extends StatelessWidget {
   final Widget child;
 
-  const NotificationBadgeWrapper({Key? key, required this.child}) : super(key: key);
+  const NotificationBadgeWrapper({super.key, required this.child});
 
   @override
   Widget build(BuildContext context) {

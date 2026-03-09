@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import '../../data/services/user_service.dart';
 
 class StudentDataScreen extends StatefulWidget {
+  const StudentDataScreen({super.key});
+
   @override
   _StudentDataScreenState createState() => _StudentDataScreenState();
 }
@@ -170,7 +172,7 @@ class _ResponsiveDataViewState extends State<_ResponsiveDataView> {
         child: SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: DataTable(
-            headingRowColor: MaterialStateProperty.all(Colors.grey[50]),
+            headingRowColor: WidgetStateProperty.all(Colors.grey[50]),
             columns: const [
               DataColumn(label: Text('Adm No.', style: TextStyle(fontWeight: FontWeight.bold))),
               DataColumn(label: Text('Student Name', style: TextStyle(fontWeight: FontWeight.bold))),

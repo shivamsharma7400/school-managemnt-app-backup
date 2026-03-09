@@ -5,6 +5,8 @@ import '../../data/services/user_service.dart';
 import '../../data/services/school_info_service.dart';
 
 class StaffSalaryManagementScreen extends StatefulWidget {
+  const StaffSalaryManagementScreen({super.key});
+
   @override
   _StaffSalaryManagementScreenState createState() => _StaffSalaryManagementScreenState();
 }
@@ -216,7 +218,7 @@ class _TeacherSalaryCard extends StatelessWidget {
                 ),
                 Switch(
                   value: teacher['salaryEnabled'] ?? true, 
-                  activeColor: Colors.green,
+                  activeThumbColor: Colors.green,
                   onChanged: (val) {
                     Provider.of<UserService>(context, listen: false).toggleSalaryStatus(teacher['id'], val);
                   }
@@ -289,7 +291,7 @@ class _TeacherSalaryCard extends StatelessWidget {
                   ),
                   SizedBox(height: 16),
                   DropdownButtonFormField<String>(
-                    value: month,
+                    initialValue: month,
                     decoration: InputDecoration(
                       labelText: "Salary Month",
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -299,7 +301,7 @@ class _TeacherSalaryCard extends StatelessWidget {
                   ),
                   SizedBox(height: 16),
                   DropdownButtonFormField<String>(
-                    value: method,
+                    initialValue: method,
                     decoration: InputDecoration(
                       labelText: "Payment Method",
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -324,8 +326,8 @@ class _TeacherSalaryCard extends StatelessWidget {
                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
                   }
                 },
-                child: Text('Confirm Payment'),
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
+                child: Text('Confirm Payment'),
               ),
             ],
           );

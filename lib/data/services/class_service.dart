@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import '../models/class_model.dart';
+import '../../core/constants/app_constants.dart';
 
 class ClassService extends ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -23,6 +24,7 @@ class ClassService extends ChangeNotifier {
         .snapshots()
         .map((snapshot) => snapshot.docs
             .map((doc) => ClassModel.fromMap(doc.data(), doc.id))
+            .where((c) => AppConstants.schoolClasses.contains(c.name))
             .toList());
   }
 
@@ -38,6 +40,7 @@ class ClassService extends ChangeNotifier {
     final snapshot = await _firestore.collection('classes').get();
     return snapshot.docs
         .map((doc) => ClassModel.fromMap(doc.data(), doc.id))
+        .where((c) => AppConstants.schoolClasses.contains(c.name))
         .toList();
   }
 

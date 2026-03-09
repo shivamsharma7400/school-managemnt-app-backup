@@ -5,6 +5,8 @@ import 'staff_data_screen.dart';
 import 'school_data_analysis_screen.dart';
 
 class DataCenterScreen extends StatelessWidget {
+  const DataCenterScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(

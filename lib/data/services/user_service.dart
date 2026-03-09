@@ -1,6 +1,7 @@
-
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../core/constants/app_constants.dart';
+import '../../core/utils/drive_helper.dart';
 import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
 
@@ -496,19 +497,22 @@ class UserService extends ChangeNotifier {
         final int? currentClass = int.tryParse(classIdStr);
         
         if (currentClass != null) {
-          if (currentClass < 8) {
-            // Increment class
-            batch.update(doc.reference, {
-              'classId': (currentClass + 1).toString(),
-            });
-          } else if (currentClass == 8) {
-            // Transition to Passed Out
-            batch.update(doc.reference, {
-              'role': 'passed_out',
-              'passedOutSession': currentSession,
-              // Keep classId as 8 for record, or clear it if preferred. 
-              // Usually keeping it is better for history.
-            });
+          final List<String> classes = AppConstants.schoolClasses;
+          final int currentIndex = classes.indexOf(classIdStr);
+
+          if (currentIndex != -1) {
+            if (currentIndex < classes.length - 1) {
+              // Promote to next class in list
+              batch.update(doc.reference, {
+                'classId': classes[currentIndex + 1],
+              });
+            } else {
+              // Last class in list - Transition to Passed Out
+              batch.update(doc.reference, {
+                'role': 'passed_out',
+                'passedOutSession': currentSession,
+              });
+            }
           }
           count++;
         }

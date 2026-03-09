@@ -1,11 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:intl/intl.dart';
-import 'package:pdf/pdf.dart';
-import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_constants.dart';
 import '../../data/models/scheduled_exam_model.dart';
@@ -17,7 +12,7 @@ import '../../data/services/student_exam_pdf_service.dart';
 class AdmitCardScreen extends StatefulWidget {
   final ScheduledExam exam;
 
-  const AdmitCardScreen({Key? key, required this.exam}) : super(key: key);
+  const AdmitCardScreen({super.key, required this.exam});
 
   @override
   _AdmitCardScreenState createState() => _AdmitCardScreenState();
@@ -105,13 +100,13 @@ class _AdmitCardScreenState extends State<AdmitCardScreen> with TickerProviderSt
             height: 60,
             child: ElevatedButton(
               onPressed: () => setState(() => _isIssuedClicked = true),
-              child: Text('ISSUE ADMIT CARD', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.modernPrimary,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 elevation: 8,
               ),
+              child: Text('ISSUE ADMIT CARD', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1)),
             ),
           ),
         ],
@@ -188,7 +183,12 @@ class _AdmitCardScreenState extends State<AdmitCardScreen> with TickerProviderSt
       builder: (context, snapshot) {
         if (snapshot.hasData) {
           _classes = snapshot.data!;
-          _classes.sort((a, b) => a.name.compareTo(b.name));
+          _classes.sort((a, b) {
+            final indexA = AppConstants.schoolClasses.indexOf(a.name);
+            final indexB = AppConstants.schoolClasses.indexOf(b.name);
+            if (indexA != -1 && indexB != -1) return indexA.compareTo(indexB);
+            return a.name.compareTo(b.name);
+          });
           
           if (_classes.isNotEmpty) {
             _updateTabController(_classes.length);

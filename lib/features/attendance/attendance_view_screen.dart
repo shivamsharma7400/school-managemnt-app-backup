@@ -7,6 +7,8 @@ import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 class AttendanceViewScreen extends StatefulWidget {
+  const AttendanceViewScreen({super.key});
+
   @override
   _AttendanceViewScreenState createState() => _AttendanceViewScreenState();
 }

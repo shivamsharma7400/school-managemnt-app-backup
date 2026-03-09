@@ -3,24 +3,20 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
-import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:http/http.dart' as http;
-import 'package:http/http.dart' as http;
 import '../../core/constants/app_constants.dart';
 import '../../core/utils/drive_helper.dart';
 import '../../data/models/scheduled_exam_model.dart';
-import '../../data/services/school_config_service.dart';
-import '../../data/services/user_service.dart';
 import '../../data/services/class_service.dart';
 import '../../data/models/class_model.dart';
 
 class MarkSheetScreen extends StatefulWidget {
   final ScheduledExam exam;
 
-  const MarkSheetScreen({Key? key, required this.exam}) : super(key: key);
+  const MarkSheetScreen({super.key, required this.exam});
 
   @override
   _MarkSheetScreenState createState() => _MarkSheetScreenState();
@@ -35,7 +31,7 @@ class _MarkSheetScreenState extends State<MarkSheetScreen> with TickerProviderSt
   bool _isLoading = true;
   
   // Storage for all marks: {classId: {studentId: {subject: marks}}}
-  Map<String, Map<String, dynamic>> _resultsData = {};
+  final Map<String, Map<String, dynamic>> _resultsData = {};
 
   @override
   void initState() {
@@ -63,7 +59,12 @@ class _MarkSheetScreenState extends State<MarkSheetScreen> with TickerProviderSt
 
       // 1. Load classes
       _classes = await Provider.of<ClassService>(context, listen: false).fetchAllClasses();
-      _classes.sort((a, b) => a.name.compareTo(b.name));
+      _classes.sort((a, b) {
+        final indexA = AppConstants.schoolClasses.indexOf(a.name);
+        final indexB = AppConstants.schoolClasses.indexOf(b.name);
+        if (indexA != -1 && indexB != -1) return indexA.compareTo(indexB);
+        return a.name.compareTo(b.name);
+      });
 
       if (_classes.isNotEmpty) {
         _tabController = TabController(length: _classes.length, vsync: this);
@@ -148,7 +149,6 @@ class _MarkSheetScreenState extends State<MarkSheetScreen> with TickerProviderSt
     final doc = pw.Document();
     final font = await PdfGoogleFonts.outfitRegular();
     final fontBold = await PdfGoogleFonts.outfitBold();
-    final schoolConfig = Provider.of<SchoolConfigService>(context, listen: false);
 
     // Load school logo
     pw.MemoryImage? logoImage;
@@ -202,10 +202,9 @@ class _MarkSheetScreenState extends State<MarkSheetScreen> with TickerProviderSt
                 pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.center,
                   children: [
-                    pw.Text(schoolConfig.schoolName.toUpperCase(), style: pw.TextStyle(font: fontBold, fontSize: 24, color: PdfColors.red800)),
-                    pw.Text('KHIDDI, RAJOUN, BANKA (BIHAR) - 813107', style: pw.TextStyle(font: font, fontSize: 10)),
-                    pw.Text('Website: www.vpsbanka.com | E-mail id: vpsbanka@gmail.com', style: pw.TextStyle(font: font, fontSize: 10)),
-                    pw.Text('Contact No: +91- 9263101520', style: pw.TextStyle(font: font, fontSize: 10)),
+                    pw.Text(AppStrings.appName.toUpperCase(), style: pw.TextStyle(font: fontBold, fontSize: 24, color: PdfColors.red800)),
+                    pw.Text(AppStrings.schoolAddress, style: pw.TextStyle(font: font, fontSize: 10)),
+                    pw.Text('Phone: ${AppStrings.schoolPhone} | E-mail: ${AppStrings.schoolEmail}', style: pw.TextStyle(font: font, fontSize: 10)),
                   ],
                 ),
               ],
@@ -281,7 +280,7 @@ class _MarkSheetScreenState extends State<MarkSheetScreen> with TickerProviderSt
                       _buildPdfTableCell(sub['fullMarks'].toString(), font),
                       _buildPdfTableCell(studentMarks[sub['name']]?.toString() ?? '0', fontBold),
                     ],
-                  )).toList(),
+                  )),
                 ],
               ),
               
@@ -470,13 +469,13 @@ class _MarkSheetScreenState extends State<MarkSheetScreen> with TickerProviderSt
                           subtitle: Text('Adm No: ${student['admNo']} | Sec: ${(student['customData'] as Map?)?['Sec'] ?? 'N/A'}'),
                           trailing: ElevatedButton(
                             onPressed: () => _printMarkSheet(student, classModel.name),
-                            child: const Text('Preview'),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.white,
                               foregroundColor: AppColors.modernPrimary,
                               side: BorderSide(color: AppColors.modernPrimary),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                             ),
+                            child: const Text('Preview'),
                           ),
                         ),
                       );

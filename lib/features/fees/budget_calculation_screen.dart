@@ -2,12 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import 'package:provider/provider.dart';
-import '../../data/services/fee_service.dart';
-import '../../data/services/user_service.dart';
 import '../common/widgets/modern_layout.dart';
 
 class BudgetCalculationScreen extends StatefulWidget {
+  const BudgetCalculationScreen({super.key});
+
   @override
   _BudgetCalculationScreenState createState() => _BudgetCalculationScreenState();
 }

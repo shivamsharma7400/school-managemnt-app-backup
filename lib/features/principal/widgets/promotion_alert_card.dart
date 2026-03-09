@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../data/services/promotion_service.dart';
 
 class PromotionAlertCard extends StatefulWidget {
-  const PromotionAlertCard({Key? key}) : super(key: key);
+  const PromotionAlertCard({super.key});
 
   @override
   State<PromotionAlertCard> createState() => _PromotionAlertCardState();

@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:vps/core/constants/app_constants.dart';
 import 'package:vps/data/services/auth_service.dart';
-import 'package:vps/data/services/school_config_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 // Feature screens for navigation
@@ -42,12 +41,12 @@ class ModernLayout extends StatefulWidget {
   final bool showSidebar;
 
   const ModernLayout({
-    Key? key,
+    super.key,
     required this.child,
     this.title = 'Dashboard',
     this.actions,
     this.showSidebar = true,
-  }) : super(key: key);
+  });
 
   @override
   _ModernLayoutState createState() => _ModernLayoutState();
@@ -85,9 +84,9 @@ class _ModernLayoutState extends State<ModernLayout> {
         return Scaffold(
           drawer: isMobile && widget.showSidebar 
               ? Drawer(
-                  child: _buildSidebar(context),
                   width: 260,
                   backgroundColor: AppColors.sidebarBackground,
+                  child: _buildSidebar(context),
                 ) 
               : null,
           body: Row(
@@ -112,7 +111,6 @@ class _ModernLayoutState extends State<ModernLayout> {
 
   Widget _buildSidebar(BuildContext context) {
     final authService = Provider.of<AuthService>(context, listen: false);
-    final config = Provider.of<SchoolConfigService>(context);
     
     return Container(
       width: 260,
@@ -125,18 +123,15 @@ class _ModernLayoutState extends State<ModernLayout> {
               onTap: () => Navigator.of(context).popUntil((route) => route.isFirst),
               child: Row(
                 children: [
-                   if (config.schoolLogoUrl.isNotEmpty) 
-                      CircleAvatar(
-                        radius: 16,
-                        backgroundColor: Colors.transparent,
-                        backgroundImage: NetworkImage(config.schoolLogoUrl),
-                      )
-                   else
-                      Icon(Icons.school, color: Colors.white, size: 32),
+                   CircleAvatar(
+                     radius: 16,
+                     backgroundColor: Colors.transparent,
+                     backgroundImage: AssetImage('assets/logos/logo.png'),
+                   ),
                   SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      config.schoolName,
+                      AppStrings.appName,
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 20,
@@ -164,14 +159,14 @@ class _ModernLayoutState extends State<ModernLayout> {
                   icon: Icons.school,
                   title: 'Academic',
                   items: [
-                    _SidebarSubItem(title: 'Attendance', onTap: () => _navigateTo(context, MarkAttendanceScreen())),
-                    _SidebarSubItem(title: 'Routines', onTap: () => _navigateTo(context, RoutineManagementScreen())),
+                    _SidebarSubItem(title: 'Attendance', icon: Icons.how_to_reg, onTap: () => _navigateTo(context, MarkAttendanceScreen())),
+                    _SidebarSubItem(title: 'Routines', icon: Icons.schedule, onTap: () => _navigateTo(context, RoutineManagementScreen())),
 
-                    _SidebarSubItem(title: 'Exam Setup', onTap: () => _navigateTo(context, ExamSetupScreen())),
-                    _SidebarSubItem(title: 'Syllabus Report', onTap: () => _navigateTo(context, SyllabusReportScreen())),
+                    _SidebarSubItem(title: 'Exam Setup', icon: Icons.settings_suggest, onTap: () => _navigateTo(context, ExamSetupScreen())),
+                    _SidebarSubItem(title: 'Syllabus Report', icon: Icons.assignment, onTap: () => _navigateTo(context, SyllabusReportScreen())),
                     if (authService.role == 'principal' || authService.role == 'admin') ...[
-                      _SidebarSubItem(title: 'Complaint Box', onTap: () => _navigateTo(context, PrincipalComplaintListScreen())),
-                      _SidebarSubItem(title: 'Leave Requests', onTap: () => _navigateTo(context, LeaveApprovalScreen())),
+                      _SidebarSubItem(title: 'Complaint Box', icon: Icons.report_problem, onTap: () => _navigateTo(context, PrincipalComplaintListScreen())),
+                      _SidebarSubItem(title: 'Leave Requests', icon: Icons.event_busy, onTap: () => _navigateTo(context, LeaveApprovalScreen())),
                     ],
                   ],
                 ),
@@ -181,9 +176,9 @@ class _ModernLayoutState extends State<ModernLayout> {
                     icon: Icons.auto_awesome,
                     title: 'Gen AI',
                     items: [
-                      _SidebarSubItem(title: 'AI Reports', onTap: () => _navigateTo(context, PrincipalAssistantScreen())),
-                      _SidebarSubItem(title: 'AI Training', onTap: () => _navigateTo(context, SchoolInfoScreen())),
-                      _SidebarSubItem(title: 'Student Queries', onTap: () => _navigateTo(context, StudentQueriesScreen())),
+                      _SidebarSubItem(title: 'AI Reports', icon: Icons.auto_graph, onTap: () => _navigateTo(context, PrincipalAssistantScreen())),
+                      _SidebarSubItem(title: 'AI Training', icon: Icons.model_training, onTap: () => _navigateTo(context, SchoolInfoScreen())),
+                      _SidebarSubItem(title: 'Student Queries', icon: Icons.question_answer, onTap: () => _navigateTo(context, StudentQueriesScreen())),
                     ],
                   ),
 
@@ -191,10 +186,10 @@ class _ModernLayoutState extends State<ModernLayout> {
                   icon: Icons.account_balance_wallet,
                   title: 'Finance',
                   items: [
-                    _SidebarSubItem(title: 'Student Fee', onTap: () => _navigateTo(context, FeeManagementScreen())),
-                    _SidebarSubItem(title: 'Staff Salary', onTap: () => _navigateTo(context, StaffSalaryManagementScreen())),
-                    _SidebarSubItem(title: 'Transactions', onTap: () => _navigateTo(context, TransactionHistoryScreen())),
-                    _SidebarSubItem(title: 'School Budget', onTap: () => _navigateTo(context, BudgetCalculationScreen())),
+                    _SidebarSubItem(title: 'Student Fee', icon: Icons.payments, onTap: () => _navigateTo(context, FeeManagementScreen())),
+                    _SidebarSubItem(title: 'Staff Salary', icon: Icons.account_balance, onTap: () => _navigateTo(context, StaffSalaryManagementScreen())),
+                    _SidebarSubItem(title: 'Transactions', icon: Icons.history, onTap: () => _navigateTo(context, TransactionHistoryScreen())),
+                    _SidebarSubItem(title: 'School Budget', icon: Icons.pie_chart, onTap: () => _navigateTo(context, BudgetCalculationScreen())),
                   ],
                 ),
 
@@ -202,12 +197,12 @@ class _ModernLayoutState extends State<ModernLayout> {
                   icon: Icons.admin_panel_settings,
                   title: 'Administration',
                   items: [
-                    _SidebarSubItem(title: 'User Management', onTap: () => _navigateTo(context, UserManagementScreen())),
-                    _SidebarSubItem(title: 'HR Management', onTap: () => _navigateTo(context, HRManagementScreen())),
-                    _SidebarSubItem(title: 'Announcement', onTap: () => _navigateTo(context, AnnouncementScreen())),
-                    _SidebarSubItem(title: 'Bus Management', onTap: () => _navigateTo(context, BusManagementScreen())),
+                    _SidebarSubItem(title: 'User Management', icon: Icons.people, onTap: () => _navigateTo(context, UserManagementScreen())),
+                    _SidebarSubItem(title: 'HR Management', icon: Icons.assignment_ind, onTap: () => _navigateTo(context, HRManagementScreen())),
+                    _SidebarSubItem(title: 'Announcement', icon: Icons.campaign, onTap: () => _navigateTo(context, AnnouncementScreen())),
+                    _SidebarSubItem(title: 'Bus Management', icon: Icons.directions_bus, onTap: () => _navigateTo(context, BusManagementScreen())),
                     
-                    _SidebarSubItem(title: 'Strategic Planning', onTap: () => _navigateTo(context, StrategicPlanningScreen())),
+                    _SidebarSubItem(title: 'Strategic Planning', icon: Icons.insights, onTap: () => _navigateTo(context, StrategicPlanningScreen())),
                   ],
                 ),
 
@@ -215,11 +210,11 @@ class _ModernLayoutState extends State<ModernLayout> {
                   icon: Icons.analytics,
                   title: 'Data Center',
                   items: [
-                    _SidebarSubItem(title: 'Student Data', onTap: () => _navigateTo(context, StudentDataScreen())),
-                    _SidebarSubItem(title: 'Teachers Data', onTap: () => _navigateTo(context, TeacherDataScreen())),
-                    _SidebarSubItem(title: 'Staff Data', onTap: () => _navigateTo(context, StaffDataScreen())),
-                    _SidebarSubItem(title: 'School Analysis', onTap: () => _navigateTo(context, SchoolDataAnalysisScreen())),
-                    _SidebarSubItem(title: 'Data Export', onTap: () => _navigateTo(context, const DataExportScreen())),
+                    _SidebarSubItem(title: 'Student Data', icon: Icons.person, onTap: () => _navigateTo(context, StudentDataScreen())),
+                    _SidebarSubItem(title: 'Teachers Data', icon: Icons.person_search, onTap: () => _navigateTo(context, TeacherDataScreen())),
+                    _SidebarSubItem(title: 'Staff Data', icon: Icons.badge, onTap: () => _navigateTo(context, StaffDataScreen())),
+                    _SidebarSubItem(title: 'School Analysis', icon: Icons.analytics, onTap: () => _navigateTo(context, SchoolDataAnalysisScreen())),
+                    _SidebarSubItem(title: 'Data Export', icon: Icons.file_download, onTap: () => _navigateTo(context, const DataExportScreen())),
                   ],
                 ),
 
@@ -260,20 +255,6 @@ class _ModernLayoutState extends State<ModernLayout> {
             style: TextStyle(color: Colors.white70, fontSize: 12),
           ),
           SizedBox(height: 12),
-          ElevatedButton(
-            onPressed: () async {
-              const url = 'https://google.com'; // Placeholder link
-              if (await canLaunchUrl(Uri.parse(url))) {
-                await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: AppColors.sidebarBackground,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-            child: Text('Guide'),
-          ),
         ],
       ),
     );
@@ -418,15 +399,18 @@ class _SidebarCategoryState extends State<_SidebarCategory> {
 class _SidebarSubItem extends StatelessWidget {
   final String title;
   final VoidCallback onTap;
+  final IconData? icon;
 
   const _SidebarSubItem({
     required this.title,
     required this.onTap,
+    this.icon,
   });
 
   @override
   Widget build(BuildContext context) {
     return ListTile(
+      leading: icon != null ? Icon(icon, color: Colors.white60, size: 20) : null,
       title: Text(
         title,
         style: TextStyle(color: Colors.white60, fontSize: 13),

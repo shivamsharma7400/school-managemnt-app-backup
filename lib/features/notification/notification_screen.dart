@@ -118,8 +118,9 @@ class _NotificationScreenState extends State<NotificationScreen> {
   @override
   Widget build(BuildContext context) {
     final user = Provider.of<AuthService>(context).user;
-    if (user == null)
+    if (user == null) {
       return Scaffold(body: Center(child: Text("Please login")));
+    }
 
     return Scaffold(
       backgroundColor: Colors.grey[50],

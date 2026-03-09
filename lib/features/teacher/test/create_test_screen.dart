@@ -10,6 +10,8 @@ import '../../../core/constants/app_constants.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class CreateTestScreen extends StatefulWidget {
+  const CreateTestScreen({super.key});
+
   @override
   _CreateTestScreenState createState() => _CreateTestScreenState();
 }
@@ -23,7 +25,7 @@ class _CreateTestScreenState extends State<CreateTestScreen> {
   String? _classId;
   String _subject = '';
   int _durationMinutes = 10;
-  List<Question> _questions = [];
+  final List<Question> _questions = [];
 
   bool _isSubmitting = false;
 
@@ -67,7 +69,7 @@ class _CreateTestScreenState extends State<CreateTestScreen> {
                     if (_questions.isEmpty)
                       _buildEmptyState()
                     else
-                      ..._questions.asMap().entries.map((entry) => _buildQuestionPreview(entry.key, entry.value)).toList(),
+                      ..._questions.asMap().entries.map((entry) => _buildQuestionPreview(entry.key, entry.value)),
                   ],
                 ),
               ),
@@ -291,7 +293,7 @@ class _CreateTestScreenState extends State<CreateTestScreen> {
     String op1 = '', op2 = '', op3 = '', op4 = '';
     String? selectedOptionIndex; 
     String correctAnsText = ''; 
-    final _qFormKey = GlobalKey<FormState>();
+    final qFormKey = GlobalKey<FormState>();
 
     showModalBottomSheet(
       context: context,
@@ -319,7 +321,7 @@ class _CreateTestScreenState extends State<CreateTestScreen> {
                     child: SingleChildScrollView(
                       padding: EdgeInsets.all(20),
                       child: Form(
-                        key: _qFormKey,
+                        key: qFormKey,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -348,11 +350,12 @@ class _CreateTestScreenState extends State<CreateTestScreen> {
                               width: double.infinity,
                               child: ElevatedButton(
                                 onPressed: () {
-                                  if (_qFormKey.currentState!.validate()) {
+                                  if (qFormKey.currentState!.validate()) {
                                      String finalCorrectAnswer = '';
                                      
-                                     if (selectedOptionIndex == 'A') finalCorrectAnswer = op1;
-                                     else if (selectedOptionIndex == 'B') finalCorrectAnswer = op2;
+                                     if (selectedOptionIndex == 'A') {
+                                       finalCorrectAnswer = op1;
+                                     } else if (selectedOptionIndex == 'B') finalCorrectAnswer = op2;
                                      else if (selectedOptionIndex == 'C') finalCorrectAnswer = op3;
                                      else if (selectedOptionIndex == 'D') finalCorrectAnswer = op4;
               

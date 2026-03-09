@@ -8,17 +8,17 @@ class ClassDropdown extends StatelessWidget {
   final String labelText;
 
   const ClassDropdown({
-    Key? key,
+    super.key,
     required this.value,
     required this.onChanged,
     this.validator,
     this.labelText = 'Select Class',
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
     return DropdownButtonFormField<String>(
-      value: value,
+      initialValue: value,
       decoration: InputDecoration(
         labelText: labelText,
         border: OutlineInputBorder(),

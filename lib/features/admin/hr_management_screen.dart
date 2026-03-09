@@ -4,12 +4,12 @@ import '../principal/user_management_screen.dart';
 import '../attendance/mark_attendance_screen.dart';
 import '../fees/staff_salary_management_screen.dart';
 import '../principal/leave/leave_approval_screen.dart';
-import '../data_center/staff_data_screen.dart';
 import 'package:provider/provider.dart';
 import '../../data/services/user_service.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class HRManagementScreen extends StatelessWidget {
+  const HRManagementScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
     return ModernLayout(
@@ -230,11 +230,11 @@ class HRManagementScreen extends StatelessWidget {
               horizontalMargin: 20,
               headingRowHeight: 56,
               dataRowHeight: 60,
-              headingRowColor: MaterialStateProperty.all(Colors.indigo.shade50),
+              headingRowColor: WidgetStateProperty.all(Colors.indigo.shade50),
               showCheckboxColumn: false,
               columns: [
                 DataColumn(
-                  label: Container(
+                  label: SizedBox(
                     width: 150,
                     child: Text('NAME', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: Colors.indigo.shade900, letterSpacing: 0.5)),
                   ),
@@ -254,10 +254,10 @@ class HRManagementScreen extends StatelessWidget {
                 final isEven = index % 2 == 0;
                 
                 return DataRow(
-                  color: MaterialStateProperty.all(isEven ? Colors.white : Colors.grey.shade50),
+                  color: WidgetStateProperty.all(isEven ? Colors.white : Colors.grey.shade50),
                   cells: [
                     DataCell(
-                      Container(
+                      SizedBox(
                         width: 150,
                         child: Text(
                           user['name'] ?? 'Unknown',

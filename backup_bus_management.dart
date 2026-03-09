@@ -6,6 +6,8 @@ import '../../data/models/bus_destination.dart';
 import '../../data/services/bus_service.dart';
 
 class BusManagementScreen extends StatefulWidget {
+  const BusManagementScreen({super.key});
+
   @override
   _BusManagementScreenState createState() => _BusManagementScreenState();
 }
@@ -129,6 +131,8 @@ class _BusManagementScreenState extends State<BusManagementScreen>
 }
 
 class AddDestinationScreen extends StatefulWidget {
+  const AddDestinationScreen({super.key});
+
   @override
   _AddDestinationScreenState createState() => _AddDestinationScreenState();
 }
@@ -239,8 +243,8 @@ class _AddDestinationScreenState extends State<AddDestinationScreen> {
                   child: FloatingActionButton.small(
                     backgroundColor: Colors.white,
                     onPressed: _getCurrentLocation,
-                    child: Icon(Icons.my_location, color: Colors.blue),
                     tooltip: 'My Location',
+                    child: Icon(Icons.my_location, color: Colors.blue),
                   ),
                 ),
               ],

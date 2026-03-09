@@ -7,10 +7,9 @@ import 'package:printing/printing.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
-import 'dart:typed_data';
 
 class DataExportScreen extends StatefulWidget {
-  const DataExportScreen({Key? key}) : super(key: key);
+  const DataExportScreen({super.key});
 
   @override
   State<DataExportScreen> createState() => _DataExportScreenState();
@@ -201,7 +200,7 @@ class _DataExportScreenState extends State<DataExportScreen> {
                   pw.Text("Date: \${a['createdAt'] != null ? DateFormat('dd MMM').format((a['createdAt'] as Timestamp).toDate()) : 'N/A'}", style: pw.TextStyle(fontSize: 8, color: PdfColors.grey600)),
                 ],
               ),
-            )).toList(),
+            )),
           ],
         ),
       );

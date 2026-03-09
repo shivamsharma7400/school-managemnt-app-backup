@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import '../../data/services/user_service.dart';
 
 class StaffDataScreen extends StatefulWidget {
+  const StaffDataScreen({super.key});
+
   @override
   _StaffDataScreenState createState() => _StaffDataScreenState();
 }
@@ -156,7 +158,7 @@ class _ResponsiveStaffViewState extends State<_ResponsiveStaffView> {
         child: SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: DataTable(
-            headingRowColor: MaterialStateProperty.all(Colors.grey[50]),
+            headingRowColor: WidgetStateProperty.all(Colors.grey[50]),
             columns: const [
               DataColumn(label: Text('Staff ID', style: TextStyle(fontWeight: FontWeight.bold))),
               DataColumn(label: Text('Name', style: TextStyle(fontWeight: FontWeight.bold))),

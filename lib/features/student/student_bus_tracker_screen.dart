@@ -20,7 +20,7 @@ class _StudentBusTrackerScreenState extends State<StudentBusTrackerScreen> with 
   GoogleMapController? _mapController;
   BusDestination? _selectedDestination;
   Set<Marker> _markers = {};
-  Set<Polyline> _polylines = {};
+  final Set<Polyline> _polylines = {};
   MapType _currentMapType = MapType.normal;
   late AnimationController _pulseController;
   List<LatLng> _polylineCoordinates = [];
@@ -261,7 +261,7 @@ class _StudentBusTrackerScreenState extends State<StudentBusTrackerScreen> with 
           final destinations = snapshot.data!;
           return DropdownButtonHideUnderline(
             child: DropdownButtonFormField<String>(
-              value: _selectedDestination?.id,
+              initialValue: _selectedDestination?.id,
               isExpanded: true,
               hint: const Text("Select your Bus Stop"),
               decoration: const InputDecoration(
@@ -483,7 +483,7 @@ class _StudentBusTrackerScreenState extends State<StudentBusTrackerScreen> with 
 // Haversine formula for updating distance calculation if needed locally
   double _calculateDistance(lat1, lon1, lat2, lon2) {
     var p = 0.017453292519943295;
-    var c = (a) => 0.5 - math.cos(a) / 2;
+    double c(a) => 0.5 - math.cos(a) / 2;
     return 12742 * math.asin(math.sqrt(c((lat2 - lat1) * p) + math.cos(lat1 * p) * math.cos(lat2 * p) * c((lon2 - lon1) * p)));
   }
 

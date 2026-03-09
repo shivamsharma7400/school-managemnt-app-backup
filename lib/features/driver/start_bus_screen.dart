@@ -8,7 +8,7 @@ import '../../data/services/auth_service.dart';
 import 'active_trip_screen.dart';
 
 class StartBusScreen extends StatefulWidget {
-  const StartBusScreen({Key? key}) : super(key: key);
+  const StartBusScreen({super.key});
 
   @override
   _StartBusScreenState createState() => _StartBusScreenState();

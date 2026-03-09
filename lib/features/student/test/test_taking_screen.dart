@@ -12,7 +12,7 @@ import '../../../data/services/auth_service.dart';
 class TestTakingScreen extends StatefulWidget {
   final Test test;
 
-  const TestTakingScreen({Key? key, required this.test}) : super(key: key);
+  const TestTakingScreen({super.key, required this.test});
 
   @override
   _TestTakingScreenState createState() => _TestTakingScreenState();
@@ -21,7 +21,7 @@ class TestTakingScreen extends StatefulWidget {
 class _TestTakingScreenState extends State<TestTakingScreen> with WidgetsBindingObserver {
   late Timer _timer;
   int _remainingSeconds = 0;
-  Map<String, String> _answers = {}; // questionId -> answer
+  final Map<String, String> _answers = {}; // questionId -> answer
   bool _isSubmitting = false;
 
   @override
@@ -300,7 +300,7 @@ class _TestTakingScreenState extends State<TestTakingScreen> with WidgetsBinding
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                       );
-                    }).toList(),
+                    }),
                   ] else ...[
                     TextField(
                       decoration: InputDecoration(

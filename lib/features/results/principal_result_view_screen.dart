@@ -6,6 +6,8 @@ import '../../data/models/class_model.dart';
 import 'student_result_screen.dart';
 
 class PrincipalResultViewScreen extends StatefulWidget {
+  const PrincipalResultViewScreen({super.key});
+
   @override
   _PrincipalResultViewScreenState createState() => _PrincipalResultViewScreenState();
 }

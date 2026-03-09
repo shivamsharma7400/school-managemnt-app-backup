@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../data/services/auth_service.dart';
-import '../../data/services/school_config_service.dart';
 import '../../core/constants/app_constants.dart';
 
 class LoginScreen extends StatefulWidget {
+  const LoginScreen({super.key});
+
   @override
   _LoginScreenState createState() => _LoginScreenState();
 }
@@ -32,11 +33,8 @@ class _LoginScreenState extends State<LoginScreen> {
     }
     // Navigation is handled by the AuthWrapper in Main
   }
-
   @override
   Widget build(BuildContext context) {
-    final config = Provider.of<SchoolConfigService>(context);
-    
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -65,7 +63,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   SizedBox(height: 8),
                   Text(
-                    'Sign in to continue to ${config.schoolName}',
+                    'Sign in to ${AppStrings.appName}',
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                           color: Colors.grey[600],
                         ),
@@ -108,7 +106,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     alignment: Alignment.centerRight,
                     child: TextButton(
                       onPressed: () {
-                        final _resetEmailController = TextEditingController();
+                        final resetEmailController = TextEditingController();
                         showDialog(
                           context: context,
                           builder: (context) => AlertDialog(
@@ -121,7 +119,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                                 SizedBox(height: 16),
                                 TextField(
-                                  controller: _resetEmailController,
+                                  controller: resetEmailController,
                                   decoration: InputDecoration(
                                     labelText: 'Email Address',
                                     border: OutlineInputBorder(),
@@ -136,7 +134,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                               ElevatedButton(
                                 onPressed: () async {
-                                  if (_resetEmailController.text.isEmpty) {
+                                  if (resetEmailController.text.isEmpty) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
                                         content: Text('Please enter email'),
@@ -158,7 +156,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   );
                                   String? error = await authService
                                       .sendPasswordResetEmail(
-                                        _resetEmailController.text.trim(),
+                                        resetEmailController.text.trim(),
                                       );
 
                                   if (error == null) {

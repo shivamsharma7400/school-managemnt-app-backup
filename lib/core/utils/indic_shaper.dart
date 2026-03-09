@@ -4,7 +4,7 @@ class IndicShaper {
   /// 1. Reordering of 'i' matra (ि)
   /// 2. Basic cleaning of some characters that cause issues in PDFs.
   static String shape(String input) {
-    if (input == null || input.isEmpty) return input;
+    if (input.isEmpty) return input;
 
     var result = input;
 

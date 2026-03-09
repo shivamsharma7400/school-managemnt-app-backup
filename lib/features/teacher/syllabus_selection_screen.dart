@@ -3,7 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:vps/features/academics/syllabus_report_screen.dart';
 
 class SyllabusSelectionScreen extends StatelessWidget {
-  const SyllabusSelectionScreen({Key? key}) : super(key: key);
+  const SyllabusSelectionScreen({super.key});
 
   @override
   Widget build(BuildContext context) {

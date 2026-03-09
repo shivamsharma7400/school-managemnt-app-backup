@@ -3,13 +3,14 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../data/services/auth_service.dart';
 import '../../data/services/ai_service.dart';
-import '../../core/constants/app_constants.dart';
 
 import '../../data/models/announcement_model.dart';
 import '../../data/services/announcement_service.dart';
 import '../../data/services/notification_service.dart';
 
 class AnnouncementScreen extends StatelessWidget {
+  const AnnouncementScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
     final authService = Provider.of<AuthService>(context);
@@ -188,9 +189,9 @@ class AnnouncementScreen extends StatelessWidget {
   }
 
   void _showAddDialog(BuildContext context, String targetAudience) {
-    final _titleController = TextEditingController();
-    final _contentController = TextEditingController();
-    String _type = 'general';
+    final titleController = TextEditingController();
+    final contentController = TextEditingController();
+    String type = 'general';
 
     showDialog(
       context: context,
@@ -202,17 +203,17 @@ class AnnouncementScreen extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 DropdownButton<String>(
-                  value: _type,
+                  value: type,
                   isExpanded: true,
                   items: [
                     DropdownMenuItem(value: 'general', child: Text('General')),
                     DropdownMenuItem(value: 'urgent', child: Text('Urgent')),
                     DropdownMenuItem(value: 'event', child: Text('Event')),
                   ],
-                  onChanged: (val) => setState(() => _type = val!),
+                  onChanged: (val) => setState(() => type = val!),
                 ),
-                TextField(controller: _titleController, decoration: InputDecoration(labelText: 'Title')),
-                TextField(controller: _contentController, decoration: InputDecoration(labelText: 'Content'), maxLines: 5),
+                TextField(controller: titleController, decoration: InputDecoration(labelText: 'Title')),
+                TextField(controller: contentController, decoration: InputDecoration(labelText: 'Content'), maxLines: 5),
                 SizedBox(height: 8),
                 Align(
                   alignment: Alignment.centerRight,
@@ -220,7 +221,7 @@ class AnnouncementScreen extends StatelessWidget {
                     icon: Icon(Icons.auto_awesome, color: Colors.purple),
                     label: Text('Rewrite with AI', style: TextStyle(color: Colors.purple)),
                     onPressed: () async {
-                      if (_contentController.text.isEmpty || _titleController.text.isEmpty) {
+                      if (contentController.text.isEmpty || titleController.text.isEmpty) {
                         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Please enter title and content first.')));
                         return;
                       }
@@ -231,14 +232,14 @@ class AnnouncementScreen extends StatelessWidget {
                       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('AI is refining your announcement...')));
 
                       final refinedContent = await aiService.generateAnnouncement(
-                        content: _contentController.text,
-                        title: _titleController.text,
+                        content: contentController.text,
+                        title: titleController.text,
                         senderName: authService.userName,
                         role: authService.role ?? 'Management',
                       );
 
                       if (refinedContent != null) {
-                        _contentController.text = refinedContent;
+                        contentController.text = refinedContent;
                       }
                     },
                   ),
@@ -250,14 +251,14 @@ class AnnouncementScreen extends StatelessWidget {
             TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancel')),
             ElevatedButton(
               onPressed: () {
-                if (_titleController.text.isNotEmpty && _contentController.text.isNotEmpty) {
+                if (titleController.text.isNotEmpty && contentController.text.isNotEmpty) {
                   Provider.of<AnnouncementService>(context, listen: false)
-                      .addAnnouncement(_titleController.text, _contentController.text, _type, targetAudience);
+                      .addAnnouncement(titleController.text, contentController.text, type, targetAudience);
                   
                   // Trigger Notification
                   final notificationService = Provider.of<NotificationService>(context, listen: false);
                   notificationService.sendBroadcastNotification(
-                    'New Announcement: ${_titleController.text}', 
+                    'New Announcement: ${titleController.text}', 
                     'Click to view details.',
                     targetRole: targetAudience == 'all' ? null : targetAudience
                   );
