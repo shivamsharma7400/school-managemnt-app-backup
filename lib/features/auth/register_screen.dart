@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:vps/data/services/auth_service.dart';
+import 'package:vps/data/services/school_info_service.dart';
 import 'package:vps/core/constants/app_constants.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -246,15 +247,50 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     ),
                                     SizedBox(height: 24),
                                     Flexible(
-                                      child: SizedBox(
-                                        height: 500, // Fixed height for TabBarView to work inside scrollable
-                                        child: TabBarView(
-                                          children: [
-                                            _buildRegisterForm('student'),
-                                            _buildRegisterForm('teacher'),
-                                            _buildRegisterForm('staff'),
-                                          ],
-                                        ),
+                                      child: StreamBuilder<Map<String, dynamic>?>(
+                                        stream: Provider.of<SchoolInfoService>(context, listen: false).getSchoolInfoStream(),
+                                        builder: (context, snapshot) {
+                                          final isLocked = snapshot.data?['isAppLocked'] == true;
+                                          
+                                          if (isLocked) {
+                                            return Center(
+                                              child: Column(
+                                                mainAxisAlignment: MainAxisAlignment.center,
+                                                children: [
+                                                  const Icon(Icons.app_blocking_rounded, color: Colors.redAccent, size: 64),
+                                                  const SizedBox(height: 24),
+                                                  Text(
+                                                    'Registration Disabled',
+                                                    style: GoogleFonts.outfit(
+                                                      fontSize: 22,
+                                                      fontWeight: FontWeight.bold,
+                                                      color: Colors.redAccent,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 12),
+                                                  Text(
+                                                    'New registrations are temporarily suspended by the administration.',
+                                                    textAlign: TextAlign.center,
+                                                    style: GoogleFonts.outfit(
+                                                      color: Colors.black54,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            );
+                                          }
+
+                                          return SizedBox(
+                                            height: 500, // Fixed height for TabBarView to work inside scrollable
+                                            child: TabBarView(
+                                              children: [
+                                                _buildRegisterForm('student'),
+                                                _buildRegisterForm('teacher'),
+                                                _buildRegisterForm('staff'),
+                                              ],
+                                            ),
+                                          );
+                                        },
                                       ),
                                     ),
                                     Center(

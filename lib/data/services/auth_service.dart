@@ -134,13 +134,30 @@ class AuthService extends ChangeNotifier {
   }
 
   Future<String?> sendPasswordResetEmail(String email) async {
+    if (kDebugMode) print("DEBUG: Attempting to send reset email to $email");
     try {
       await _auth.sendPasswordResetEmail(email: email);
+      if (kDebugMode) print("DEBUG: Firebase reported success for $email");
       return null;
     } on FirebaseAuthException catch (e) {
+      if (kDebugMode) print("DEBUG: FirebaseAuthException: ${e.code} - ${e.message}");
       return e.message;
     } catch (e) {
-      return "An error occurred";
+      if (kDebugMode) print("DEBUG: General Exception: $e");
+      return "An error occurred: $e";
+    }
+  }
+
+  Future<bool> isEmailRegistered(String email) async {
+    try {
+      final query = await _firestore
+          .collection('users')
+          .where('email', isEqualTo: email)
+          .limit(1)
+          .get();
+      return query.docs.isNotEmpty;
+    } catch (e) {
+      return false;
     }
   }
 

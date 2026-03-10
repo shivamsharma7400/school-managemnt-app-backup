@@ -3,7 +3,10 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:vps/core/constants/app_constants.dart';
 import 'package:vps/data/services/auth_service.dart';
+import 'package:vps/data/services/school_info_service.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:intl/intl.dart';
+import 'dart:ui';
 
 // Feature screens for navigation
 import 'package:vps/features/attendance/mark_attendance_screen.dart';
@@ -81,29 +84,165 @@ class _ModernLayoutState extends State<ModernLayout> {
       builder: (context, constraints) {
         final isMobile = constraints.maxWidth < 900;
 
-        return Scaffold(
-          drawer: isMobile && widget.showSidebar 
-              ? Drawer(
-                  width: 260,
-                  backgroundColor: AppColors.sidebarBackground,
-                  child: _buildSidebar(context),
-                ) 
-              : null,
-          body: Row(
-            children: [
-              if (!isMobile && widget.showSidebar) _buildSidebar(context),
-              Expanded(
-                child: Column(
-                  children: [
-                    _buildHeader(context, isMobile),
-                    Expanded(
-                      child: widget.child,
+        return StreamBuilder<Map<String, dynamic>?>(
+          stream: Provider.of<SchoolInfoService>(context, listen: false).getSchoolInfoStream(),
+          builder: (context, lockSnapshot) {
+            final info = lockSnapshot.data ?? {};
+            final isAppLocked = info['isAppLocked'] == true;
+            final authService = Provider.of<AuthService>(context, listen: false);
+            
+            // Show lock overlay ONLY if app is locked AND user is NOT a student
+            final shouldShowLock = isAppLocked && authService.role != 'student';
+
+            return Scaffold(
+              drawer: isMobile && widget.showSidebar 
+                  ? Drawer(
+                      width: 260,
+                      backgroundColor: AppColors.sidebarBackground,
+                      child: _buildSidebar(context),
+                    ) 
+                  : null,
+              body: Stack(
+                children: [
+                  Row(
+                    children: [
+                      if (!isMobile && widget.showSidebar) _buildSidebar(context),
+                      Expanded(
+                        child: Column(
+                          children: [
+                            _buildHeader(context, isMobile),
+                            
+                            // NEW: SCHEDULED LOCKOUT WARNING BANNER
+                            () {
+                              final isScheduled = info['isLockoutScheduled'] == true;
+                              final scheduledTime = info['scheduledLockoutTime'] != null 
+                                  ? (info['scheduledLockoutTime'] as dynamic).toDate() as DateTime 
+                                  : null;
+                              final role = authService.role;
+                              
+                              // ONLY for Admin and Principal
+                              if (isScheduled && scheduledTime != null && (role == 'admin' || role == 'principal')) {
+                                return Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.orangeAccent.withOpacity(0.9),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.1),
+                                        blurRadius: 4,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 20),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Text(
+                                          'System will locked after ${DateFormat('MMM dd, hh:mm a').format(scheduledTime)}, please contact developer on your School Dashboard on our Platform',
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }
+                              return const SizedBox.shrink();
+                            }(),
+
+                            Expanded(
+                              child: widget.child,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  
+                  if (shouldShowLock)
+                    Positioned.fill(
+                      child: ClipRRect(
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                          child: Container(
+                            color: Colors.black.withOpacity(0.7),
+                            padding: const EdgeInsets.all(40),
+                            child: Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(24),
+                                    decoration: BoxDecoration(
+                                      color: Colors.redAccent.withOpacity(0.1),
+                                      shape: BoxShape.circle,
+                                      border: Border.all(color: Colors.redAccent.withOpacity(0.3), width: 2),
+                                    ),
+                                    child: const Icon(Icons.lock_person_rounded, color: Colors.redAccent, size: 80),
+                                  ),
+                                  const SizedBox(height: 32),
+                                  const Text(
+                                    'SYSTEM ACCESS RESTRICTED',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 28,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 2,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  const Text(
+                                    'This portal is currently locked by the administrator.\nAccess is temporarily revoked for your account role.',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 16,
+                                      height: 1.5,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 48),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white10,
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(color: Colors.white24),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(Icons.info_outline, color: Colors.blueAccent, size: 20),
+                                        const SizedBox(width: 12),
+                                        Text(
+                                          'Requirement: Contact school developer for assistance.',
+                                          style: TextStyle(color: Colors.blueAccent.shade100, fontWeight: FontWeight.bold),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 24),
+                                  TextButton.icon(
+                                    onPressed: () => authService.signOut(),
+                                    icon: const Icon(Icons.logout, color: Colors.white60),
+                                    label: const Text('Logout', style: TextStyle(color: Colors.white60)),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
-                  ],
-                ),
+                ],
               ),
-            ],
-          ),
+            );
+          },
         );
       },
     );

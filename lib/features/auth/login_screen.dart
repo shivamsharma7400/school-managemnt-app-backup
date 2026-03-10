@@ -33,6 +33,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
     // Navigation is handled by the AuthWrapper in Main
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -42,11 +43,11 @@ class _LoginScreenState extends State<LoginScreen> {
           child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 24.0),
             child: Form(
+              key: _formKey,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Dynamic Logo
                   // Logo
                   Image.asset(
                     'assets/logos/logo.png',
@@ -134,10 +135,27 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                               ElevatedButton(
                                 onPressed: () async {
-                                  if (resetEmailController.text.isEmpty) {
+                                  final email = resetEmailController.text.trim();
+                                  if (email.isEmpty) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text('Please enter email')),
+                                    );
+                                    return;
+                                  }
+
+                                  final authService = Provider.of<AuthService>(context, listen: false);
+                                  
+                                  // Verify email exists in Firestore
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Verifying email...'), duration: Duration(seconds: 1)),
+                                  );
+                                  
+                                  bool isRegistered = await authService.isEmailRegistered(email);
+                                  if (!isRegistered) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
-                                        content: Text('Please enter email'),
+                                        content: Text('Email not found. Please register first or contact the school.'),
+                                        backgroundColor: Colors.redAccent,
                                       ),
                                     );
                                     return;
@@ -145,31 +163,39 @@ class _LoginScreenState extends State<LoginScreen> {
 
                                   Navigator.pop(context); // Close dialog
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text('Sending reset link...'),
-                                    ),
+                                    SnackBar(content: Text('Sending reset link...')),
                                   );
 
-                                  final authService = Provider.of<AuthService>(
-                                    context,
-                                    listen: false,
-                                  );
-                                  String? error = await authService
-                                      .sendPasswordResetEmail(
-                                        resetEmailController.text.trim(),
-                                      );
+                                  String? error = await authService.sendPasswordResetEmail(email);
 
                                   if (error == null) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          'Reset link sent to your email!',
+                                    showDialog(
+                                      context: context,
+                                      builder: (context) => AlertDialog(
+                                        title: Text('Reset Email Sent'),
+                                        content: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text('A reset link has been sent to $email.'),
+                                            SizedBox(height: 16),
+                                            Text('If you do not see it:', style: TextStyle(fontWeight: FontWeight.bold)),
+                                            Text('• Check your Spam/Junk folder.'),
+                                            Text('• Wait a few minutes.'),
+                                            Text('• Contact the Principal to get your password manually if needed.'),
+                                          ],
                                         ),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () => Navigator.pop(context),
+                                            child: Text('OK'),
+                                          ),
+                                        ],
                                       ),
                                     );
                                   } else {
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(content: Text('Error: $error')),
+                                      SnackBar(content: Text('Error: $error'), backgroundColor: Colors.redAccent),
                                     );
                                   }
                                 },

@@ -4,7 +4,9 @@ import 'package:provider/provider.dart';
 import 'dart:ui';
 import '../../data/services/user_service.dart';
 import '../../data/services/auth_service.dart';
+import '../../data/services/school_info_service.dart';
 import 'dev_school_info_screen.dart';
+import 'package:intl/intl.dart';
 
 class DeveloperDashboard extends StatefulWidget {
   const DeveloperDashboard({super.key});
@@ -177,6 +179,198 @@ class _DeveloperDashboardState extends State<DeveloperDashboard> {
                 ],
               ),
               const SizedBox(height: 48),
+              
+              // NEW: GLOBAL SYSTEM LOCK TOGGLE
+              StreamBuilder<Map<String, dynamic>?>(
+                stream: Provider.of<SchoolInfoService>(context).getSchoolInfoStream(),
+                builder: (context, snapshot) {
+                  final info = snapshot.data ?? {};
+                  final isLocked = info['isAppLocked'] == true;
+                  
+                  return _buildGlassCard(
+                    width: double.infinity,
+                    child: Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: isLocked ? Colors.redAccent.withOpacity(0.1) : Colors.greenAccent.withOpacity(0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              isLocked ? Icons.lock_outline : Icons.lock_open_outlined,
+                              color: isLocked ? Colors.redAccent : Colors.greenAccent,
+                              size: 32,
+                            ),
+                          ),
+                          const SizedBox(width: 20),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "GLOBAL SYSTEM LOCK",
+                                  style: GoogleFonts.outfit(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text(
+                                  isLocked 
+                                    ? "Emergency Lockdown Active. All non-student users are blocked."
+                                    : "System is running normally. All users have access.",
+                                  style: GoogleFonts.outfit(
+                                    color: Colors.blueGrey.shade300,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Switch(
+                            value: isLocked,
+                            activeColor: Colors.redAccent,
+                            onChanged: (val) async {
+                              try {
+                                await Provider.of<SchoolInfoService>(context, listen: false)
+                                    .updateSchoolInfo({'isAppLocked': val});
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(val ? "SYSTEM LOCKED" : "SYSTEM UNLOCKED"),
+                                    backgroundColor: val ? Colors.red : Colors.green,
+                                  ),
+                                );
+                              } catch (e) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text("Action failed: $e")),
+                                );
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 24),
+              
+              // NEW: SCHEDULED LOCKOUT PICKER
+              StreamBuilder<Map<String, dynamic>?>(
+                stream: Provider.of<SchoolInfoService>(context).getSchoolInfoStream(),
+                builder: (context, snapshot) {
+                  final info = snapshot.data ?? {};
+                  final isScheduled = info['isLockoutScheduled'] == true;
+                  final scheduledTime = info['scheduledLockoutTime'] != null 
+                      ? (info['scheduledLockoutTime'] as dynamic).toDate() as DateTime 
+                      : null;
+                  
+                  return _buildGlassCard(
+                    width: double.infinity,
+                    child: Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.timer_outlined, color: Colors.orangeAccent, size: 24),
+                              const SizedBox(width: 12),
+                              Text(
+                                "SCHEDULE SYSTEM LOCK",
+                                style: GoogleFonts.outfit(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const Spacer(),
+                              if (isScheduled)
+                                TextButton.icon(
+                                  onPressed: () async {
+                                    await Provider.of<SchoolInfoService>(context, listen: false)
+                                        .updateSchoolInfo({
+                                      'isLockoutScheduled': false,
+                                      'scheduledLockoutTime': null,
+                                    });
+                                  },
+                                  icon: Icon(Icons.cancel, color: Colors.redAccent, size: 16),
+                                  label: Text("Clear Schedule", style: TextStyle(color: Colors.redAccent)),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          if (isScheduled && scheduledTime != null)
+                             Container(
+                               padding: EdgeInsets.all(16),
+                               decoration: BoxDecoration(
+                                 color: Colors.orangeAccent.withOpacity(0.05),
+                                 borderRadius: BorderRadius.circular(12),
+                                 border: Border.all(color: Colors.orangeAccent.withOpacity(0.2)),
+                               ),
+                               child: Row(
+                                 children: [
+                                   Icon(Icons.notifications_active, color: Colors.orangeAccent, size: 20),
+                                   const SizedBox(width: 12),
+                                   Text(
+                                     "Lockout at: ${DateFormat('MMM dd, yyyy - hh:mm a').format(scheduledTime)}",
+                                     style: GoogleFonts.outfit(color: Colors.orangeAccent, fontWeight: FontWeight.bold),
+                                   ),
+                                 ],
+                               ),
+                             )
+                          else
+                            ElevatedButton.icon(
+                              onPressed: () async {
+                                final date = await showDatePicker(
+                                  context: context,
+                                  initialDate: DateTime.now().add(const Duration(days: 1)),
+                                  firstDate: DateTime.now(),
+                                  lastDate: DateTime.now().add(const Duration(days: 365)),
+                                );
+                                if (date != null) {
+                                  final time = await showTimePicker(
+                                    context: context,
+                                    initialTime: TimeOfDay.now(),
+                                  );
+                                  if (time != null) {
+                                    final finalDateTime = DateTime(
+                                      date.year, date.month, date.day,
+                                      time.hour, time.minute,
+                                    );
+                                    await Provider.of<SchoolInfoService>(context, listen: false)
+                                        .updateSchoolInfo({
+                                      'isLockoutScheduled': true,
+                                      'scheduledLockoutTime': finalDateTime,
+                                    });
+                                  }
+                                }
+                              },
+                              icon: Icon(Icons.add_alarm, size: 18),
+                              label: Text("Set Lockout Schedule"),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.blueAccent.withOpacity(0.2),
+                                foregroundColor: Colors.blueAccent,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                            ),
+                          const SizedBox(height: 8),
+                          Text(
+                            "Admins & Principals will see a warning reminder until this time.",
+                            style: GoogleFonts.outfit(color: Colors.blueGrey.shade400, fontSize: 11),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+              ),
+
+              const SizedBox(height: 32),
               
               // Total Users Large Card
               _buildGlassCard(
