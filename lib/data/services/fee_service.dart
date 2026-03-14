@@ -437,6 +437,7 @@ class FeeService extends ChangeNotifier {
           }
         });
 
+
         if (totalAmount > 0) {
           // 1. Update Student Due
           batch.update(_firestore.collection('users').doc(userId), {
@@ -444,6 +445,8 @@ class FeeService extends ChangeNotifier {
           });
 
           // 2. Log Transaction
+          String description = 'Monthly charges for $monthName';
+
           final transRef = _firestore.collection('transactions').doc();
           batch.set(transRef, {
             'userId': userId,
@@ -451,7 +454,7 @@ class FeeService extends ChangeNotifier {
             'classId': classId,
             'amount': totalAmount,
             'type': 'Monthly Fee',
-            'description': 'Monthly charges for $monthName',
+            'description': description,
             'date': FieldValue.serverTimestamp(),
           });
         }
@@ -488,7 +491,8 @@ class FeeService extends ChangeNotifier {
     }
 
     try {
-      // 2. Fetch all classes
+
+      // 3. Fetch all classes
       final classesSnapshot = await _firestore.collection('classes').get();
       
       // 3. Iterate and process for each class

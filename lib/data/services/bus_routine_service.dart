@@ -83,6 +83,13 @@ class BusRoutineService extends ChangeNotifier {
     });
   }
 
+  Stream<List<BusRoutine>> getAllRoutinesStream() {
+    return _firestore
+        .collection('bus_routines')
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map((doc) => BusRoutine.fromFirestore(doc)).toList());
+  }
+
   Future<void> saveRoutine(String driverId, int tripNumber, String type, List<BusRoutineStop> stops) async {
     final query = await _firestore
         .collection('bus_routines')

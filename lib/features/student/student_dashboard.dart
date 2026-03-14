@@ -15,8 +15,6 @@ import '../common/widgets/notification_badge_wrapper.dart';
 import '../common/widgets/dashboard_profile_card.dart';
 import 'student_bus_tracker_screen.dart';
 import 'exam_dashboard_screen.dart';
-
-
 import '../common/complaint_box_screen.dart';
 
 class StudentDashboard extends StatelessWidget {
@@ -150,4 +148,3 @@ class StudentDashboard extends StatelessWidget {
     );
   }
 }
-

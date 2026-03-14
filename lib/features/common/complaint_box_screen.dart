@@ -18,7 +18,6 @@ class _ComplaintBoxScreenState extends State<ComplaintBoxScreen> with SingleTick
   final _formKey = GlobalKey<FormState>();
   final _subjectController = TextEditingController();
   final _descriptionController = TextEditingController();
-  bool _isRewriting = false;
   bool _isSubmitting = false;
   late TabController _tabController;
 
@@ -34,58 +33,6 @@ class _ComplaintBoxScreenState extends State<ComplaintBoxScreen> with SingleTick
     _descriptionController.dispose();
     _tabController.dispose();
     super.dispose();
-  }
-
-  Future<void> _rewriteWithAI() async {
-    if (_descriptionController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please enter some text to rewrite.')),
-      );
-      return;
-    }
-
-    setState(() {
-      _isRewriting = true;
-    });
-
-    try {
-      final authService = Provider.of<AuthService>(context, listen: false);
-      final complaintService = Provider.of<ComplaintService>(context, listen: false);
-      final user = authService.user;
-      final userService = Provider.of<UserService>(context, listen: false);
-      String userName = 'User';
-      String userRole = 'Student';
-
-      Map<String, dynamic>? fullUserData;
-      if (user != null) {
-        fullUserData = await userService.getUserData(user.uid);
-        userName = fullUserData?['name'] ?? 'User';
-        userRole = authService.role ?? 'Student';
-      }
-
-      final rewrittenText = await complaintService.rewriteComplaintWithAI(
-        _descriptionController.text, 
-        userName, 
-        userRole,
-        userDetails: fullUserData,
-      );
-      
-      if (rewrittenText != null && mounted) {
-        _descriptionController.text = rewrittenText;
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to rewrite: $e')),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isRewriting = false;
-        });
-      }
-    }
   }
 
   Future<void> _submitComplaint() async {
@@ -217,7 +164,7 @@ class _ComplaintBoxScreenState extends State<ComplaintBoxScreen> with SingleTick
                     ),
                     SizedBox(height: 8),
                     Text(
-                      'Describe your issue clearly. Use AI to polish your message.',
+                      'Describe your issue clearly and honestly.',
                       style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                     ),
                     SizedBox(height: 24),
@@ -246,28 +193,6 @@ class _ComplaintBoxScreenState extends State<ComplaintBoxScreen> with SingleTick
                       validator: (value) => value!.isEmpty ? 'Please enter a description' : null,
                     ),
                     SizedBox(height: 16),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(colors: [Colors.purple.shade200, Colors.deepPurple.shade200]),
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                        child: ElevatedButton.icon(
-                          onPressed: _isRewriting ? null : _rewriteWithAI,
-                          icon: _isRewriting 
-                              ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) 
-                              : Icon(Icons.auto_awesome, color: Colors.white, size: 18),
-                          label: Text(_isRewriting ? 'Rewriting...' : 'Rewrite with AI'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.transparent,
-                            foregroundColor: Colors.white,
-                            shadowColor: Colors.transparent,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                          ),
-                        ),
-                      ),
-                    ),
                   ],
                 ),
               ),

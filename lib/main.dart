@@ -7,7 +7,6 @@ import 'firebase_options.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_service.dart';
 import 'core/constants/app_constants.dart';
-// import 'data/services/mock_auth_service.dart'; // Switch to mock
 import 'data/services/auth_service.dart';
 import 'data/services/attendance_service.dart';
 import 'data/services/fee_service.dart';
@@ -25,15 +24,15 @@ import 'data/services/ai_service.dart';
 import 'data/services/school_info_service.dart';
 import 'data/services/student_query_service.dart';
 import 'data/services/strategic_planning_service.dart';
-
 import 'data/services/bus_service.dart';
 import 'data/services/bus_routine_service.dart';
 import 'data/services/complaint_service.dart';
+
 import 'features/auth/login_screen.dart';
 import 'features/auth/register_screen.dart';
-import 'features/student/student_dashboard.dart'; // Placeholder
-import 'features/teacher/teacher_dashboard.dart'; // Placeholder
-import 'features/principal/principal_dashboard.dart'; // Placeholder
+import 'features/student/student_dashboard.dart';
+import 'features/teacher/teacher_dashboard.dart';
+import 'features/principal/principal_dashboard.dart';
 import 'features/admin/admin_dashboard.dart';
 import 'features/management/management_dashboard.dart';
 import 'features/driver/driver_dashboard.dart';
@@ -41,6 +40,7 @@ import 'features/auth/pending_approval_screen.dart';
 import 'features/student/passed_out_dashboard.dart';
 import 'features/staff/staff_dashboard.dart';
 import 'features/admin/developer_dashboard.dart';
+import 'features/common/splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -70,18 +70,16 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AnnouncementService()),
         ChangeNotifierProvider(create: (_) => ResultService()),
         ChangeNotifierProvider(create: (_) => ClassService()),
-        // Removed duplicate ClassService
         ChangeNotifierProvider(create: (_) => AssignmentService()),
         ChangeNotifierProvider(create: (_) => LeaveService()),
         ChangeNotifierProvider(create: (_) => TestService()),
-        ChangeNotifierProvider(create: (_) => OnlineClassService()), // Added
+        ChangeNotifierProvider(create: (_) => OnlineClassService()),
         ChangeNotifierProvider(create: (_) => AIService()),
         ChangeNotifierProvider(create: (_) => SchoolInfoService()),
         ChangeNotifierProvider(create: (_) => StudentQueryService()),
         ChangeNotifierProvider(create: (_) => BusService()),
-        ChangeNotifierProvider(create: (_) => NotificationService()..initialize()), // Init here
-
-        ChangeNotifierProvider(create: (_) => ThemeService()), // Add ThemeService
+        ChangeNotifierProvider(create: (_) => NotificationService()..initialize()),
+        ChangeNotifierProvider(create: (_) => ThemeService()),
         Provider(create: (_) => ComplaintService()),
         ChangeNotifierProvider(create: (_) => StrategicPlanningService()),
         ChangeNotifierProvider(create: (_) => BusRoutineService()),
@@ -94,7 +92,7 @@ class MyApp extends StatelessWidget {
             title: AppStrings.appName,
             theme: isModern ? AppTheme.modernTheme : AppTheme.lightTheme,
             themeMode: ThemeMode.light,
-            home: AuthWrapper(), // Changed from SplashScreen to AuthWrapper for better flow control
+            home: const SplashScreen(), // Premium Splash Screen as initial entry
             routes: {
               '/register': (context) => RegisterScreen(),
             },
@@ -114,40 +112,37 @@ class AuthWrapper extends StatelessWidget {
     final authService = Provider.of<AuthService>(context);
 
     if (authService.isLoading) {
-      return Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     if (authService.user == null && !authService.isDeveloperLoggedIn) {
-      return LoginScreen();
+      return const LoginScreen();
     }
 
     // Role based routing
     switch (authService.role) {
       case 'student':
-        return StudentDashboard();
+        return const StudentDashboard();
       case 'teacher':
-        return TeacherDashboard();
+        return const TeacherDashboard();
       case 'principal':
-        return PrincipalDashboard();
+        return const PrincipalDashboard();
       case 'management':
-        return ManagementDashboard();
+        return const ManagementDashboard();
       case 'admin':
-        return AdminDashboard();
+        return const AdminDashboard();
       case 'driver':
-        return DriverDashboard();
+        return const DriverDashboard();
       case 'passed_out':
-        return PassedOutDashboard();
+        return const PassedOutDashboard();
       case 'staff':
-        return StaffDashboard();
+        return const StaffDashboard();
       case 'developer':
-        return DeveloperDashboard();
+        return const DeveloperDashboard();
       case 'pending':
-        return PendingApprovalScreen();
+        return const PendingApprovalScreen();
       default:
-        // If role fetch failed or default
-        return PendingApprovalScreen();
+        return const PendingApprovalScreen();
     }
   }
 }
-
-

@@ -306,39 +306,11 @@ class _ResponseDialog extends StatefulWidget {
 
 class _ResponseDialogState extends State<_ResponseDialog> {
   final _responseController = TextEditingController();
-  bool _isGenerating = false;
   bool _isSubmitting = false;
 
   @override
   void initState() {
     super.initState();
-    _generateAIResponse();
-  }
-
-  Future<void> _generateAIResponse() async {
-    setState(() {
-      _isGenerating = true;
-    });
-
-    try {
-      final complaintService = Provider.of<ComplaintService>(context, listen: false);
-      final response = await complaintService.generateResponseWithAI(
-        widget.complaint.description,
-        widget.isApprove,
-      );
-
-      if (response != null && mounted) {
-        _responseController.text = response;
-      }
-    } catch (e) {
-      // Handle error cleanly
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isGenerating = false;
-        });
-      }
-    }
   }
 
   Future<void> _submitResponse() async {
@@ -395,17 +367,6 @@ class _ResponseDialogState extends State<_ResponseDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (_isGenerating)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12.0),
-                child: Row(
-                  children: [
-                    SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.modernPrimary)),
-                    SizedBox(width: 12),
-                    Text('AI is drafting your response...', style: GoogleFonts.outfit(fontSize: 12, color: Colors.grey[600])),
-                  ],
-                ),
-              ),
             TextField(
               controller: _responseController,
               decoration: InputDecoration(
@@ -422,15 +383,6 @@ class _ResponseDialogState extends State<_ResponseDialog> {
               style: GoogleFonts.inter(fontSize: 14),
             ),
             SizedBox(height: 12),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton.icon(
-                onPressed: _isGenerating ? null : _generateAIResponse,
-                icon: Icon(Icons.auto_fix_high, size: 16),
-                label: Text('Redraft with AI', style: GoogleFonts.outfit(fontSize: 12)),
-                style: TextButton.styleFrom(foregroundColor: AppColors.modernPrimary),
-              ),
-            )
           ],
         ),
       ),

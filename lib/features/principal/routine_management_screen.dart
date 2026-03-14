@@ -12,6 +12,7 @@ import '../../data/services/bus_routine_service.dart';
 import '../../data/services/user_service.dart';
 import '../../data/services/bus_service.dart';
 import '../../data/models/bus_destination.dart';
+import '../../data/services/school_info_service.dart';
 
 class RoutineManagementScreen extends StatelessWidget {
   const RoutineManagementScreen({super.key});
@@ -512,7 +513,35 @@ class __TimeTableTabState extends State<_TimeTableTab> with AutomaticKeepAliveCl
               ),
             ),
           ]
-          else
+          else ...[
+            StreamBuilder<Map<String, dynamic>?>(
+              stream: Provider.of<SchoolInfoService>(context, listen: false).getSchoolInfoStream(),
+              builder: (context, snapshot) {
+                final info = snapshot.data ?? {};
+                final bool allowDownload = info['allowTimeTableDownload'] ?? false;
+                
+                return Container(
+                  margin: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.indigo.withOpacity(0.1)),
+                  ),
+                  child: SwitchListTile(
+                    title: Text("Allow Exam PDF Download", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                    subtitle: Text("If ON, students can download their exam time table PDF", style: TextStyle(fontSize: 12)),
+                    value: allowDownload,
+                    activeColor: Colors.indigo,
+                    onChanged: (val) {
+                      Provider.of<SchoolInfoService>(context, listen: false).updateSchoolInfo({
+                        'allowTimeTableDownload': val,
+                      });
+                    },
+                  ),
+                );
+              }
+            ),
             Expanded(
               child: StreamBuilder<List<Map<String, dynamic>>>(
                 stream: Provider.of<RoutineService>(context).getRoutines('timetable'),
@@ -619,6 +648,7 @@ class __TimeTableTabState extends State<_TimeTableTab> with AutomaticKeepAliveCl
                 }
               ),
             ),
+          ],
         ],
       ),
     );
@@ -658,13 +688,43 @@ class _RoutineList extends StatelessWidget {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.indigo.shade900,
                       foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                      padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       elevation: 4,
                       shadowColor: Colors.indigo.withOpacity(0.4),
                     ),
                   ),
                 ),
+              if (type == 'class')
+                StreamBuilder<Map<String, dynamic>?>(
+                  stream: Provider.of<SchoolInfoService>(context, listen: false).getSchoolInfoStream(),
+                  builder: (context, snapshot) {
+                    final info = snapshot.data ?? {};
+                    final bool allowDownload = info['allowRoutineDownload'] ?? false;
+                    
+                    return Container(
+                      margin: EdgeInsets.symmetric(horizontal: 16),
+                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.indigo.withOpacity(0.1)),
+                      ),
+                      child: SwitchListTile(
+                        title: Text("Allow Student Room Download", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                        subtitle: Text("If ON, students can download their class routine PDF", style: TextStyle(fontSize: 12)),
+                        value: allowDownload,
+                        activeColor: Colors.indigo,
+                        onChanged: (val) {
+                          Provider.of<SchoolInfoService>(context, listen: false).updateSchoolInfo({
+                            'allowRoutineDownload': val,
+                          });
+                        },
+                      ),
+                    );
+                  }
+                ),
+
               Expanded(
                 child: ListView.builder(
                   padding: EdgeInsets.all(16),
@@ -1571,11 +1631,29 @@ class _BusRoutineTabState extends State<_BusRoutineTab> {
                     itemCount: destinations.length,
                     itemBuilder: (context, index) {
                       final dest = destinations[index];
+                      final bool isAlreadyAdded = _currentStops.any((s) => s.stopId == dest.id);
+
                       return ListTile(
-                        leading: Icon(Icons.location_on, color: Colors.indigo),
-                        title: Text(dest.name, style: TextStyle(fontWeight: FontWeight.w500)),
-                        subtitle: Text("₹${dest.fee}"),
-                        onTap: () => _addStopToRoutine(dest),
+                        enabled: !isAlreadyAdded,
+                        leading: Icon(
+                          isAlreadyAdded ? Icons.check_circle : Icons.location_on, 
+                          color: isAlreadyAdded ? Colors.green : Colors.indigo
+                        ),
+                        title: Text(
+                          dest.name, 
+                          style: TextStyle(
+                            fontWeight: FontWeight.w500,
+                            color: isAlreadyAdded ? Colors.grey : Colors.black
+                          )
+                        ),
+                        subtitle: Text(
+                          "₹${dest.fee}",
+                          style: TextStyle(
+                            color: isAlreadyAdded ? Colors.grey.shade400 : Colors.grey.shade600
+                          )
+                        ),
+                        trailing: isAlreadyAdded ? const Text("Added", style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 12)) : null,
+                        onTap: isAlreadyAdded ? null : () => _addStopToRoutine(dest),
                       );
                     },
                   ),

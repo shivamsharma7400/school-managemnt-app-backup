@@ -7,6 +7,7 @@ import 'package:vps/data/services/school_info_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart';
 import 'dart:ui';
+import 'package:vps/core/utils/drive_helper.dart';
 
 // Feature screens for navigation
 import 'package:vps/features/attendance/mark_attendance_screen.dart';
@@ -468,7 +469,8 @@ class _ModernLayoutState extends State<ModernLayout> {
   }
 
   Widget _buildProfileIcon(BuildContext context, AuthService authService) {
-    final photoUrl = authService.currentUserData?['photoUrl'];
+    final rawUrl = authService.currentUserData?['photoUrl'];
+    final photoUrl = DriveHelper.getDirectDriveUrl(rawUrl?.toString() ?? '');
     
     return GestureDetector(
       onTap: () => _navigateTo(context, ProfileScreen()),

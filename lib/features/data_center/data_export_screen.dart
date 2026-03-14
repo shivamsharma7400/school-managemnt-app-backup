@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:pdf/pdf.dart';
-import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
+import 'package:csv/csv.dart';
+import 'dart:convert';
+import 'dart:html' as html;
 
 class DataExportScreen extends StatefulWidget {
   const DataExportScreen({super.key});
@@ -16,202 +16,284 @@ class DataExportScreen extends StatefulWidget {
 }
 
 class _DataExportScreenState extends State<DataExportScreen> {
+  int _selectedModuleIndex = 0;
   bool _isExporting = false;
   double _progress = 0;
   String _statusMessage = "";
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  Future<void> _exportFullAppData() async {
+  final List<Map<String, dynamic>> _modules = [
+    {'icon': Icons.people_outline, 'name': 'Students Database', 'color': Colors.blue, 'collection': 'students'},
+    {'icon': Icons.person_pin_outlined, 'name': 'Staff Directory', 'color': Colors.teal, 'collection': 'users'},
+    {'icon': Icons.receipt_long_outlined, 'name': 'Financial Audits', 'color': Colors.orange, 'collection': 'fees'},
+    {'icon': Icons.menu_book_outlined, 'name': 'Syllabus Progress', 'color': Colors.indigo, 'collection': 'syllabuses'},
+    {'icon': Icons.campaign_outlined, 'name': 'School Notices', 'color': Colors.red, 'collection': 'announcements'},
+    {'icon': Icons.event_note_outlined, 'name': 'Exam Schedules', 'color': Colors.purple, 'collection': 'exams'},
+  ];
+
+  Future<void> _exportSelectedData() async {
+    final selectedModule = _modules[_selectedModuleIndex];
+    
     setState(() {
       _isExporting = true;
       _progress = 0.05;
-      _statusMessage = "Starting Master Data Retrieval...";
+      _statusMessage = "Starting ${selectedModule['name']} Retrieval...";
     });
 
     try {
       final now = DateTime.now();
       final dateStr = DateFormat('dd-MMM-yyyy HH:mm').format(now);
-      final pdf = pw.Document();
+      List<List<dynamic>> csvData = [];
 
-      // 1. FETCH DATA - SECTION BY SECTION
-      
-      // -- Students --
-      setState(() { _progress = 0.1; _statusMessage = "Fetching Students..."; });
-      final studentSnapshot = await _firestore.collection('students').get();
-      final students = studentSnapshot.docs.map((doc) => doc.data()).toList();
+      // Add Header
+      csvData.add(['VEENA PUBLIC SCHOOL - DATA EXPORT']);
+      csvData.add(['Module:', selectedModule['name']]);
+      csvData.add(['Generated on:', dateStr]);
+      csvData.add([]);
 
-      // -- Staff/Teachers --
-      setState(() { _progress = 0.2; _statusMessage = "Fetching Staff Directory..."; });
-      final staffSnapshot = await _firestore.collection('users').get();
-      final allUsers = staffSnapshot.docs.map((doc) => doc.data()).toList();
-      final staff = allUsers.where((u) => ['admin', 'principal', 'teacher', 'staff'].contains(u['role'])).toList();
+      if (selectedModule['collection'] == 'students') {
+        setState(() { _progress = 0.3; _statusMessage = "Fetching Students..."; });
+        final snapshot = await _firestore.collection('users')
+            .where('role', whereIn: ['student', 'passed_out'])
+            .get();
+        csvData.add(['Name', 'Class', 'Roll No/Adm No', 'Parent Name', 'Mobile', 'Address', 'Gender', 'Status', 'Due Balance (₹)']);
+        for (var doc in snapshot.docs) {
+          final s = doc.data();
+          csvData.add([
+            s['name'] ?? 'N/A',
+            s['classId'] ?? s['class'] ?? 'N/A',
+            s['admNo'] ?? s['rollNo'] ?? 'N/A',
+            s['parentName'] ?? 'N/A',
+            s['phone'] ?? 'N/A',
+            s['address'] ?? 'N/A',
+            s['gender'] ?? 'N/A',
+            (s['role'] ?? 'student').toString().toUpperCase(),
+            (s['currentDue'] ?? 0).toString(),
+          ]);
+        }
+      } else if (selectedModule['collection'] == 'users') {
+        setState(() { _progress = 0.3; _statusMessage = "Fetching Staff Directory..."; });
+        final snapshot = await _firestore.collection('users')
+            .where('role', whereIn: ['admin', 'principal', 'teacher', 'staff', 'driver', 'management'])
+            .get();
+        csvData.add(['Staff Name', 'Official Role', 'System Email', 'Mobile', 'Address', 'Monthly Salary (₹)', 'Unpaid Balance (₹)']);
+        for (var doc in snapshot.docs) {
+          final s = doc.data();
+          csvData.add([
+            s['name'] ?? 'N/A',
+            (s['role'] ?? 'N/A').toString().toUpperCase(),
+            s['email'] ?? 'N/A',
+            s['phone'] ?? 'N/A',
+            s['address'] ?? 'N/A',
+            (s['monthlySalary'] ?? 0).toString(),
+            (s['salaryDue'] ?? 0).toString(),
+          ]);
+        }
+      } else if (selectedModule['collection'] == 'fees') {
+        setState(() { _progress = 0.2; _statusMessage = "Fetching Transaction Ledger..."; });
+        
+        // 1. Fetch all transactions
+        final transactionsSnapshot = await _firestore.collection('transactions').get();
+        List<Map<String, dynamic>> allEntries = [];
+        
+        for (var doc in transactionsSnapshot.docs) {
+          final data = doc.data();
+          final type = data['type']?.toString() ?? '';
+          if (type == 'Fee Payment' || type == 'Manual Income' || type == 'Manual Expense') {
+            allEntries.add({
+              'date': (data['date'] as Timestamp).toDate(),
+              'category': type.contains('Fee') ? 'Student Fee' : (type.contains('Income') ? 'Misc Income' : 'Direct Expense'),
+              'description': data['description'] ?? (type == 'Fee Payment' ? "Fee: ${data['studentName']}" : 'Manual Entry'),
+              'type': (type == 'Fee Payment' || type == 'Manual Income') ? 'INCOME' : 'EXPENSE',
+              'amount': (data['amount'] as num?)?.toDouble() ?? 0.0,
+            });
+          }
+        }
 
-      // -- Fees --
-      setState(() { _progress = 0.3; _statusMessage = "Fetching Financial Records..."; });
-      final feeSnapshot = await _firestore.collection('fees').get();
-      final fees = feeSnapshot.docs.map((doc) => doc.data()).toList();
-      double totalCollected = fees.fold(0, (sum, item) => sum + (item['paidAmount'] ?? 0).toDouble());
-      double totalDue = fees.fold(0, (sum, item) => sum + ((item['totalAmount'] ?? 0) - (item['paidAmount'] ?? 0)).toDouble());
+        // 2. Fetch Staff Salaries
+        setState(() { _progress = 0.4; _statusMessage = "Accessing Payroll Records..."; });
+        final staffSnapshot = await _firestore.collection('users')
+            .where('role', whereIn: ['teacher', 'driver', 'staff'])
+            .get();
+        
+        for (var staffDoc in staffSnapshot.docs) {
+          final historySnapshot = await staffDoc.reference.collection('salary_history')
+              .where('type', isEqualTo: 'credit')
+              .get();
+          
+          for (var histDoc in historySnapshot.docs) {
+            final hData = histDoc.data();
+            if (hData['date'] != null) {
+              allEntries.add({
+                'date': (hData['date'] as Timestamp).toDate(),
+                'category': 'Payroll',
+                'description': "Salary: ${staffDoc.data()['name'] ?? 'Staff'} (${hData['month'] ?? 'N/A'})",
+                'type': 'EXPENSE',
+                'amount': (hData['amount'] as num?)?.toDouble() ?? 0.0,
+              });
+            }
+          }
+        }
 
-      // -- Attendance Summary --
-      setState(() { _progress = 0.4; _statusMessage = "Analyzing Attendance Trends..."; });
-      final attendanceSnapshot = await _firestore.collection('attendance').limit(500).get(); // Limit for performance
-      final attendance = attendanceSnapshot.docs.map((doc) => doc.data()).toList();
+        // 3. Group by Month and Year
+        allEntries.sort((a, b) => b['date'].compareTo(a['date']));
+        Map<String, List<Map<String, dynamic>>> grouped = {};
+        for (var entry in allEntries) {
+          String monthKey = DateFormat('MMMM yyyy').format(entry['date']);
+          if (!grouped.containsKey(monthKey)) grouped[monthKey] = [];
+          grouped[monthKey]!.add(entry);
+        }
 
-      // -- Syllabus/Academic --
-      setState(() { _progress = 0.5; _statusMessage = "Fetching Syllabus Progress..."; });
-      final syllabusSnapshot = await _firestore.collection('syllabuses').get();
-      final syllabuses = syllabusSnapshot.docs.map((doc) => doc.data()).toList();
+        // 4. Build CSV Rows
+        for (var monthKey in grouped.keys) {
+          csvData.add(['--- $monthKey ---']);
+          csvData.add(['Date', 'Category', 'Description', 'Type', 'Amount (Rs)']);
+          
+          double monthIncome = 0;
+          double monthExpense = 0;
+          
+          for (var entry in grouped[monthKey]!) {
+            csvData.add([
+              DateFormat('dd/MM/yyyy').format(entry['date']),
+              entry['category'],
+              entry['description'],
+              entry['type'],
+              entry['amount'].toString(),
+            ]);
+            
+            if (entry['type'] == 'INCOME') monthIncome += entry['amount'];
+            else monthExpense += entry['amount'];
+          }
+          
+          csvData.add(['', '', 'TOTAL MONTHLY INCOME:', '', monthIncome.toString()]);
+          csvData.add(['', '', 'TOTAL MONTHLY EXPENSE:', '', monthExpense.toString()]);
+          csvData.add(['', '', 'NET MONTHLY BALANCE:', '', (monthIncome - monthExpense).toString()]);
+          csvData.add([]); // Spacing between months
+        }
+      } else if (selectedModule['collection'] == 'syllabuses') {
+        setState(() { _progress = 0.3; _statusMessage = "Fetching Syllabus Progress..."; });
+        final snapshot = await _firestore.collection('syllabuses').get();
+        csvData.add(['Subject', 'ClassID', 'Teacher', 'Progress %', 'Total Chapters']);
+        for (var doc in snapshot.docs) {
+          final s = doc.data();
+          csvData.add([
+            s['subjectName'] ?? 'N/A',
+            s['classId'] ?? 'N/A',
+            s['teacherName'] ?? 'Not Assigned',
+            "${((s['progress'] ?? 0.0) * 100).toInt()}%",
+            (s['chapterCount'] ?? 0).toString(),
+          ]);
+        }
+      } else if (selectedModule['collection'] == 'announcements') {
+        setState(() { _progress = 0.3; _statusMessage = "Retrieving Notices..."; });
+        final snapshot = await _firestore.collection('announcements').get();
+        csvData.add(['Title', 'Message Content', 'Target Audience', 'Date']);
+        for (var doc in snapshot.docs) {
+          final a = doc.data();
+          csvData.add([
+            a['title'] ?? 'No Title',
+            (a['content'] ?? a['message'] ?? '').replaceAll('\n', ' '),
+            (a['targetAudience'] ?? 'All').toString().toUpperCase(),
+            a['date'] != null ? DateFormat('dd MMM yyyy').format((a['date'] as Timestamp).toDate()) : 'N/A',
+          ]);
+        }
+      } else if (selectedModule['collection'] == 'exams') {
+        setState(() { _progress = 0.2; _statusMessage = "Fetching Exam Metadata..."; });
+        
+        // 1. Fetch Students Map (ID -> Name, RollNo)
+        final studentsSnapshot = await _firestore.collection('users').where('role', isEqualTo: 'student').get();
+        final studentMap = { for (var doc in studentsSnapshot.docs) doc.id: { 'name': doc.data()['name'], 'roll': doc.data()['admNo'] ?? doc.data()['rollNo'] ?? 'N/A' } };
+        
+        // 2. Fetch Classes Map (ID -> Name)
+        final classesSnapshot = await _firestore.collection('classes').get();
+        final classMap = { for (var doc in classesSnapshot.docs) doc.id: doc.data()['name'] };
+        
+        setState(() { _progress = 0.4; _statusMessage = "Compiling Result Sheets..."; });
+        final snapshot = await _firestore.collection('scheduled_exams').get();
+        
+        for (var examDoc in snapshot.docs) {
+          final e = examDoc.data();
+          csvData.add(['--- EXAM: ${e['name'] ?? 'N/A'} ---']);
+          csvData.add(['Dates:', '${DateFormat('dd/MM/yyyy').format((e['startDate'] as Timestamp).toDate())} to ${DateFormat('dd/MM/yyyy').format((e['endDate'] as Timestamp).toDate())}']);
+          csvData.add(['Status:', (e['status'] ?? 'N/A').toString().toUpperCase()]);
+          csvData.add([]); // Spacing
 
-      // -- Exams --
-      setState(() { _progress = 0.6; _statusMessage = "Fetching Exam Schedules..."; });
-      final examSnapshot = await _firestore.collection('exams').get();
-      final exams = examSnapshot.docs.map((doc) => doc.data()).toList();
+          // Fetch Class Results Sub-collection
+          final classResultsSnapshot = await examDoc.reference.collection('class_results').get();
+          
+          if (classResultsSnapshot.docs.isEmpty) {
+            csvData.add(['Result Status:', 'No Results Published Yet']);
+            csvData.add([]);
+          } else {
+            for (var classDoc in classResultsSnapshot.docs) {
+              final className = classMap[classDoc.id] ?? 'Class: ${classDoc.id}';
+              csvData.add(['[ $className ]']);
+              
+              final studentResults = classDoc.data(); // Map<studentId, Map<subject, marks>>
+              
+              // Find all subjects in this class result to create headers
+              Set<String> subjects = {};
+              for (var res in studentResults.values) {
+                if (res is Map) subjects.addAll(res.keys.cast<String>());
+              }
+              final sortedSubjects = subjects.toList()..sort();
+              
+              csvData.add(['Roll No', 'Student Name', ...sortedSubjects, 'Total', 'Percentage', 'Grade']);
+              
+              for (var entry in studentResults.entries) {
+                final studentId = entry.key;
+                final marksMap = entry.value as Map<String, dynamic>;
+                final studentInfo = studentMap[studentId] ?? { 'name': 'Unknown Student', 'roll': 'N/A' };
+                
+                double totalObtained = 0;
+                List<dynamic> row = [studentInfo['roll'], studentInfo['name']];
+                
+                for (var sub in sortedSubjects) {
+                  final mark = double.tryParse(marksMap[sub]?.toString() ?? '0') ?? 0;
+                  row.add(mark);
+                  totalObtained += mark;
+                }
+                
+                double percentage = (sortedSubjects.isNotEmpty) ? (totalObtained / (sortedSubjects.length * 100)) * 100 : 0;
+                String grade = 'F';
+                if (percentage >= 90) grade = 'A+';
+                else if (percentage >= 80) grade = 'A';
+                else if (percentage >= 70) grade = 'B';
+                else if (percentage >= 60) grade = 'C';
+                else if (percentage >= 40) grade = 'D';
 
-      // -- Announcements --
-      setState(() { _progress = 0.7; _statusMessage = "Retrieving Bulletins..."; });
-      final announcementSnapshot = await _firestore.collection('announcements').get();
-      final announcements = announcementSnapshot.docs.map((doc) => doc.data()).toList();
+                row.addAll([totalObtained, "${percentage.toStringAsFixed(1)}%", grade]);
+                csvData.add(row);
+              }
+              csvData.add([]); // Spacing between classes
+            }
+          }
+          csvData.add(['--------------------------------------------------']);
+          csvData.add([]); // Spacing between exams
+        }
+      }
 
-      // 2. GENERATE PDF SECTIONS
-      setState(() { _progress = 0.8; _statusMessage = "Compiling Professional PDF Report..."; });
+      String csvString = const ListToCsvConverter().convert(csvData);
 
-      pdf.addPage(
-        pw.MultiPage(
-          pageFormat: PdfPageFormat.a4,
-          margin: const pw.EdgeInsets.all(35),
-          header: (context) => _buildPdfHeader(dateStr),
-          footer: (context) => _buildPdfFooter(context, dateStr),
-          build: (context) => [
-            // COVER SECTION
-            pw.Center(
-              child: pw.Column(
-                children: [
-                  pw.SizedBox(height: 50),
-                  pw.Text("ANNUAL MASTER DATA REPORT", style: pw.TextStyle(fontSize: 28, fontWeight: pw.FontWeight.bold, color: PdfColors.indigo900)),
-                  pw.Text("VEENA PUBLIC SCHOOL - DATABASE CLOUD SYNC", style: pw.TextStyle(fontSize: 14, color: PdfColors.grey700)),
-                  pw.SizedBox(height: 40),
-                  pw.Container(
-                    width: 400,
-                    padding: const pw.EdgeInsets.all(20),
-                    decoration: pw.BoxDecoration(border: pw.Border.all(color: PdfColors.indigo100), borderRadius: const pw.BorderRadius.all(pw.Radius.circular(15))),
-                    child: pw.Column(
-                      children: [
-                        _buildSummaryRow("Total Active Students", students.length.toString()),
-                        _buildSummaryRow("Faculty & Staff Size", staff.length.toString()),
-                        _buildSummaryRow("Syllabus Modules", syllabuses.length.toString()),
-                        _buildSummaryRow("Total Revenue (Net)", "Rs. \${totalCollected.toStringAsFixed(2)}"),
-                        _buildSummaryRow("Outstanding Dues", "Rs. \${totalDue.toStringAsFixed(2)}"),
-                      ],
-                    ),
-                  ),
-                  pw.SizedBox(height: 100),
-                ],
-              ),
-            ),
+      setState(() { _progress = 0.95; _statusMessage = "Finalizing Data Stream..."; });
 
-            // 1. STUDENT DIRECTORY
-            pw.Header(level: 0, child: pw.Text("1. Full Student Directory", style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold, color: PdfColors.indigo800))),
-            pw.TableHelper.fromTextArray(
-              context: context,
-              headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white),
-              headerDecoration: const pw.BoxDecoration(color: PdfColors.indigo600),
-              data: [
-                ['Name', 'Class', 'Roll No', 'Parent Name', 'Mobile'],
-                ...students.map((s) => [
-                  s['name'] ?? 'N/A',
-                  s['class'] ?? 'N/A',
-                  s['rollNo'] ?? 'N/A',
-                  s['parentName'] ?? 'N/A',
-                  s['phone'] ?? 'N/A',
-                ]),
-              ],
-            ),
-            pw.SizedBox(height: 30),
-
-            // 2. STAFF & FACULTY
-            pw.Header(level: 0, child: pw.Text("2. Faculty & Staff Directory", style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold, color: PdfColors.teal800))),
-            pw.TableHelper.fromTextArray(
-              context: context,
-              headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white),
-              headerDecoration: const pw.BoxDecoration(color: PdfColors.teal700),
-              data: [
-                ['Staff Name', 'Official Role', 'System Email', 'Mobile'],
-                ...staff.map((s) => [
-                  s['name'] ?? 'N/A',
-                  (s['role'] ?? 'N/A').toString().toUpperCase(),
-                  s['email'] ?? 'N/A',
-                  s['phone'] ?? 'N/A',
-                ]),
-              ],
-            ),
-            pw.SizedBox(height: 30),
-
-            // 3. FINANCIAL AUDIT (FEE RECORDS)
-            pw.Header(level: 0, child: pw.Text("3. Financial Fee Audit", style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold, color: PdfColors.orange900))),
-            pw.TableHelper.fromTextArray(
-              context: context,
-              headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white),
-              headerDecoration: const pw.BoxDecoration(color: PdfColors.orange800),
-              data: [
-                ['Student', 'Month', 'Total (Rs)', 'Paid (Rs)', 'Due (Rs)'],
-                ...fees.take(100).map((f) => [ // Limit for sanity in preview but usually full
-                  f['studentName'] ?? 'N/A',
-                  f['month'] ?? 'N/A',
-                  (f['totalAmount'] ?? 0).toString(),
-                  (f['paidAmount'] ?? 0).toString(),
-                  ((f['totalAmount'] ?? 0) - (f['paidAmount'] ?? 0)).toString(),
-                ]),
-              ],
-            ),
-            pw.SizedBox(height: 30),
-
-            // 4. SYLLABUS & ACADEMIC PROGRESS
-            pw.Header(level: 0, child: pw.Text("4. Syllabus & Academic Progress", style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900))),
-            pw.TableHelper.fromTextArray(
-              context: context,
-              headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white),
-              headerDecoration: const pw.BoxDecoration(color: PdfColors.blue700),
-              data: [
-                ['Subject', 'Class', 'Teacher', 'Progress %', 'Total Chapters'],
-                ...syllabuses.map((s) => [
-                  s['subjectName'] ?? 'N/A',
-                  s['className'] ?? 'N/A',
-                  s['teacherName'] ?? 'Not Assigned',
-                  "\${((s['progress'] ?? 0.0) * 100).toInt()}%",
-                  (s['chapterCount'] ?? 0).toString(),
-                ]),
-              ],
-            ),
-            pw.SizedBox(height: 30),
-
-            // 5. ANNOUNCEMENTS & RECENT ALERTS
-            pw.Header(level: 0, child: pw.Text("5. Recent School Notices", style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold, color: PdfColors.red900))),
-            ...announcements.take(10).map((a) => pw.Container(
-              margin: const pw.EdgeInsets.only(bottom: 10),
-              padding: const pw.EdgeInsets.all(10),
-              decoration: pw.BoxDecoration(color: PdfColors.grey100, borderRadius: const pw.BorderRadius.all(pw.Radius.circular(5))),
-              child: pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  pw.Text(a['title'] ?? 'No Title', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                  pw.Text(a['message'] ?? '', style: const pw.TextStyle(fontSize: 10)),
-                  pw.Text("Date: \${a['createdAt'] != null ? DateFormat('dd MMM').format((a['createdAt'] as Timestamp).toDate()) : 'N/A'}", style: pw.TextStyle(fontSize: 8, color: PdfColors.grey600)),
-                ],
-              ),
-            )),
-          ],
-        ),
-      );
-
-      setState(() { _progress = 0.95; _statusMessage = "Finalizing File Protocol..."; });
-
-      // 3. EXECUTE DOWNLOAD/PRINT
-      await Printing.layoutPdf(
-        onLayout: (PdfPageFormat format) async => pdf.save(),
-        name: 'VPS_Complete_App_Data_\${now.millisecondsSinceEpoch}.pdf',
-      );
+      // 3. EXECUTE DOWNLOAD
+      if (kIsWeb) {
+        final bytes = utf8.encode(csvString);
+        final blob = html.Blob([bytes], 'text/csv');
+        final url = html.Url.createObjectUrlFromBlob(blob);
+        final anchor = html.AnchorElement(href: url)
+          ..setAttribute("download", "${selectedModule['collection']}_export_${now.millisecondsSinceEpoch}.csv")
+          ..click();
+        html.Url.revokeObjectUrl(url);
+      } else {
+        Get.snackbar(
+          "Export Format",
+          "CSV export is optimized for Web.",
+          snackPosition: SnackPosition.BOTTOM,
+        );
+      }
 
       setState(() {
         _isExporting = false;
@@ -221,7 +303,7 @@ class _DataExportScreenState extends State<DataExportScreen> {
 
       Get.snackbar(
         "Export Complete",
-        "Master data report has been generated successfully.",
+        "${selectedModule['name']} has been exported successfully.",
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: Colors.green,
         colorText: Colors.white,
@@ -231,7 +313,7 @@ class _DataExportScreenState extends State<DataExportScreen> {
       if (kDebugMode) print("Export Error: $e");
       setState(() {
         _isExporting = false;
-        _statusMessage = "Export Failed: \$e";
+        _statusMessage = "Export Failed: $e";
       });
       Get.snackbar(
         "Export Error",
@@ -243,67 +325,12 @@ class _DataExportScreenState extends State<DataExportScreen> {
     }
   }
 
-  pw.Widget _buildPdfHeader(String date) {
-    return pw.Column(
-      children: [
-        pw.Row(
-          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-          children: [
-            pw.Text("VEENA PUBLIC SCHOOL", style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold, color: PdfColors.indigo900)),
-            pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.end,
-              children: [
-                pw.Text("MASTER DATA REPOSITORY", style: pw.TextStyle(fontSize: 10, color: PdfColors.grey700)),
-                pw.Text("Generated on: \$date", style: pw.TextStyle(fontSize: 8, color: PdfColors.grey500)),
-              ],
-            ),
-          ],
-        ),
-        pw.Divider(thickness: 1, color: PdfColors.indigo200),
-        pw.SizedBox(height: 10),
-      ],
-    );
-  }
-
-  pw.Widget _buildPdfFooter(pw.Context context, String date) {
-    return pw.Container(
-      alignment: pw.Alignment.centerRight,
-      margin: const pw.EdgeInsets.only(top: 20),
-      child: pw.Column(
-        crossAxisAlignment: pw.CrossAxisAlignment.end,
-        children: [
-          pw.Divider(thickness: 0.5, color: PdfColors.grey300),
-          pw.Row(
-            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-            children: [
-              pw.Text("Veena Public School | Safe & Encrypted Data Port", style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey)),
-              pw.Text('Page \${context.pageNumber} / \${context.pagesCount}', style: const pw.TextStyle(fontSize: 9, color: PdfColors.indigo900)),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  pw.Widget _buildSummaryRow(String label, String value) {
-    return pw.Padding(
-      padding: const pw.EdgeInsets.symmetric(vertical: 6),
-      child: pw.Row(
-        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-        children: [
-          pw.Text(label, style: const pw.TextStyle(fontSize: 12, color: PdfColors.grey700)),
-          pw.Text(value, style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: PdfColors.indigo700)),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF1F5F9),
       appBar: AppBar(
-        title: Text('Master Data Center', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+        title: Text('Data Export Center', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
         backgroundColor: const Color(0xFF0F172A),
         foregroundColor: Colors.white,
         elevation: 0,
@@ -320,11 +347,11 @@ class _DataExportScreenState extends State<DataExportScreen> {
               padding: const EdgeInsets.all(24.0),
               child: Column(
                 children: [
+                  _buildDataCoverageCard(),
+                  const SizedBox(height: 32),
                   _buildMainExportTile(),
                   const SizedBox(height: 32),
                   if (_isExporting) _buildProgressCard(),
-                  const SizedBox(height: 16),
-                  _buildDataCoverageCard(),
                 ],
               ),
             ),
@@ -361,14 +388,14 @@ class _DataExportScreenState extends State<DataExportScreen> {
               ),
               const SizedBox(width: 16),
               Text(
-                'Full Backup Center',
+                'Selective Export',
                 style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
               ),
             ],
           ),
           const SizedBox(height: 12),
           Text(
-            'Generate a complete snapshot of all school records including academic, financial, and administrative data.',
+            'Select a specific data module above and generate a high-precision CSV export for your records.',
             style: GoogleFonts.inter(fontSize: 15, color: Colors.white60, height: 1.5),
           ),
         ],
@@ -410,12 +437,12 @@ class _DataExportScreenState extends State<DataExportScreen> {
           ),
           const SizedBox(height: 32),
           Text(
-            'Master Data Export',
+            'Export Module',
             style: GoogleFonts.outfit(fontSize: 22, fontWeight: FontWeight.bold, color: const Color(0xFF0F172A)),
           ),
           const SizedBox(height: 8),
           Text(
-            'High-Resolution PDF Compilation',
+            'High-Resolution CSV Compilation',
             style: GoogleFonts.inter(fontSize: 14, color: Colors.grey[500]),
           ),
           const SizedBox(height: 36),
@@ -423,7 +450,7 @@ class _DataExportScreenState extends State<DataExportScreen> {
             width: double.infinity,
             height: 64,
             child: ElevatedButton(
-              onPressed: _isExporting ? null : _exportFullAppData,
+              onPressed: _isExporting ? null : _exportSelectedData,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF4F46E5),
                 foregroundColor: Colors.white,
@@ -433,7 +460,7 @@ class _DataExportScreenState extends State<DataExportScreen> {
               ),
               child: _isExporting 
                 ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                : Text('Compile All App Data', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold)),
+                : Text('Export ${_modules[_selectedModuleIndex]['name']}', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold)),
             ),
           ),
         ],
@@ -455,7 +482,7 @@ class _DataExportScreenState extends State<DataExportScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('Syncing Process', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
-              Text('\${(_progress * 100).toInt()}%', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: const Color(0xFF6366F1))),
+              Text('${(_progress * 100).toInt()}%', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: const Color(0xFF6366F1))),
             ],
           ),
           const SizedBox(height: 16),
@@ -477,15 +504,6 @@ class _DataExportScreenState extends State<DataExportScreen> {
   }
 
   Widget _buildDataCoverageCard() {
-    final modules = [
-      {'icon': Icons.people_outline, 'name': 'Students Database', 'color': Colors.blue},
-      {'icon': Icons.person_pin_outlined, 'name': 'Staff Directory', 'color': Colors.teal},
-      {'icon': Icons.receipt_long_outlined, 'name': 'Financial Audits', 'color': Colors.orange},
-      {'icon': Icons.menu_book_outlined, 'name': 'Syllabus Progress', 'color': Colors.indigo},
-      {'icon': Icons.campaign_outlined, 'name': 'School Notices', 'color': Colors.red},
-      {'icon': Icons.event_note_outlined, 'name': 'Exam Schedules', 'color': Colors.purple},
-    ];
-
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -495,7 +513,7 @@ class _DataExportScreenState extends State<DataExportScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Data Coverage', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF0F172A))),
+          Text('Select Data Type', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF0F172A))),
           const SizedBox(height: 20),
           GridView.builder(
             shrinkWrap: true,
@@ -504,29 +522,44 @@ class _DataExportScreenState extends State<DataExportScreen> {
               crossAxisCount: 2,
               crossAxisSpacing: 12,
               mainAxisSpacing: 12,
-              childAspectRatio: 2.5,
+              childAspectRatio: 2.2,
             ),
-            itemCount: modules.length,
+            itemCount: _modules.length,
             itemBuilder: (context, index) {
-              final m = modules[index];
-              return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: (m['color'] as Color).withOpacity(0.05),
-                  borderRadius: BorderRadius.circular(15),
-                  border: Border.all(color: (m['color'] as Color).withOpacity(0.1)),
-                ),
-                child: Row(
-                  children: [
-                    Icon(m['icon'] as IconData, size: 20, color: m['color'] as Color),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        m['name'] as String,
-                        style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey[800]),
-                      ),
+              final m = _modules[index];
+              final isSelected = _selectedModuleIndex == index;
+              return InkWell(
+                onTap: () => setState(() => _selectedModuleIndex = index),
+                borderRadius: BorderRadius.circular(15),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: isSelected ? (m['color'] as Color).withOpacity(0.15) : (m['color'] as Color).withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(15),
+                    border: Border.all(
+                      color: isSelected ? (m['color'] as Color) : (m['color'] as Color).withOpacity(0.1),
+                      width: isSelected ? 2 : 1,
                     ),
-                  ],
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(m['icon'] as IconData, size: 20, color: m['color'] as Color),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          m['name'] as String,
+                          style: GoogleFonts.inter(
+                            fontSize: 11, 
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500, 
+                            color: isSelected ? (m['color'] as Color) : Colors.grey[800],
+                          ),
+                        ),
+                      ),
+                      if (isSelected)
+                        Icon(Icons.check_circle, size: 16, color: m['color'] as Color),
+                    ],
+                  ),
                 ),
               );
             },

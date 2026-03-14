@@ -116,7 +116,7 @@ class ReceiptService {
     List<pw.TableRow> feeRows = [];
     double currentMonthTotal = 0.0;
 
-    // Helper to add rows
+    // Help to add rows
     pw.TableRow row(String label, dynamic rate, dynamic amount) {
       return pw.TableRow(
         children: [
@@ -135,6 +135,7 @@ class ReceiptService {
         ],
       );
     }
+
 
     // Optional Components
     if (feeConfig['Coaching Fee'] != false && coachingFeeBase > 0) {

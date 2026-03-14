@@ -120,52 +120,7 @@ class AIService extends ChangeNotifier {
       {'role': 'user', 'content': prompt}
     ]);
     return response ?? "I'm having trouble connecting to the AI. Please try again later.";
-  }
-
-  Future<String?> generateLeaveApplication({
-    required String reason,
-    required String startDate,
-    required String endDate,
-    required String name,
-    required String role,
-    String? className,
-  }) async {
-    final schoolInfoDoc = await FirebaseFirestore.instance.collection('school_settings').doc('info').get();
-    final schoolName = schoolInfoDoc.data()?['name'] ?? 'Veena Public School';
-
-    final prompt = """
-    Write a formal leave application for a student/teacher.
-    
-    Context:
-    - School: $schoolName
-    - Applicant Name: $name
-    - Role: $role
-    ${role == 'student' && className != null ? '- Class: $className' : ''}
-    - Leave Dates: From $startDate to $endDate
-    - Reason: "$reason"
-
-    INSTRUCTIONS:
-    - Output ONLY the body of the letter. 
-    - Do NOT include "Subject:" line.
-    - Do NOT include conversational text like "Here is your letter".
-    - Tone: Strictly formal, polite, and professional.
-    - Format:
-      To,
-      The Principal,
-      $schoolName.
-      
-      Respected Sir/Madam,
-
-      [Body of the application]
-
-      Yours Obediently,
-      $name
-    """;
-    
-    return await generateContent(prompt);
-  }
-
-  Future<String?> generateAnnouncement({
+  }  Future<String?> generateAnnouncement({
     required String content,
     required String title,
     required String senderName,
@@ -200,6 +155,7 @@ class AIService extends ChangeNotifier {
     
     return await generateContent(prompt);
   }
+
 
   Future<ChatSession> startChatSession() async {
     // 1. Fetch School Info (static details like address)

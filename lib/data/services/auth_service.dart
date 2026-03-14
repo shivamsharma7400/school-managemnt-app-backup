@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
@@ -13,6 +14,7 @@ class AuthService extends ChangeNotifier {
   bool _isApproved = false;
   Map<String, dynamic>? _userData;
   bool _isDeveloperLoggedIn = false;
+  StreamSubscription<DocumentSnapshot>? _userSubscription;
 
   User? get user => _user;
   String? get role => _role;
@@ -31,8 +33,10 @@ class AuthService extends ChangeNotifier {
   AuthService() {
     _auth.authStateChanges().listen((User? user) async {
       _user = user;
+      _userSubscription?.cancel(); // Cancel old subscription
       if (user != null && !_isDeveloperLoggedIn) {
         await _fetchUserRole(user.uid);
+        _startUserSubscription(user.uid); // Start real-time sync
       } else if (!_isDeveloperLoggedIn) {
         _role = null;
         _classId = null;
@@ -75,6 +79,17 @@ class AuthService extends ChangeNotifier {
     } catch (e) {
       print("Error fetching role: $e");
     }
+  }
+
+  void _startUserSubscription(String uid) {
+    _userSubscription = _firestore.collection('users').doc(uid).snapshots().listen((doc) {
+      if (doc.exists) {
+        _userData = doc.data() as Map<String, dynamic>?;
+        _role = _userData?['role'];
+        _isApproved = _userData?['isApproved'] ?? false;
+        notifyListeners();
+      }
+    });
   }
 
   Future<String?> signIn(String email, String password) async {
@@ -162,7 +177,7 @@ class AuthService extends ChangeNotifier {
   }
 
   Future<void> signOut() async {
-    NotificationService().stopListening();
+    _userSubscription?.cancel();
     _isDeveloperLoggedIn = false;
     _role = null;
     _userData = null;

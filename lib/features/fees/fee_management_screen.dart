@@ -10,6 +10,12 @@ import '../../data/models/bus_destination.dart';
 import '../../data/services/bus_service.dart';
 import '../../core/constants/app_constants.dart';
 import '../../data/utils/migration_util.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter/services.dart' show rootBundle;
+import 'dart:typed_data';
 
 class FeeManagementScreen extends StatefulWidget {
   const FeeManagementScreen({super.key});
@@ -215,38 +221,20 @@ class _FeeManagementScreenState extends State<FeeManagementScreen>
             tooltip: 'Auto Pilot Settings',
           ),
         ),
-        Container(
-          margin: const EdgeInsets.only(right: 8),
-          child: IconButton(
-            onPressed: () async {
-              try {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Syncing standard classes...'))
-                );
-                await MigrationUtil.standardizeClassIds();
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      backgroundColor: Colors.green,
-                      content: Text('Sync complete! All classes from Nursery to 12 are now available.')
-                    )
-                  );
-                }
-              } catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      backgroundColor: Colors.red,
-                      content: Text('Sync failed: $e')
-                    )
-                  );
-                }
-              }
-            },
-            icon: const Icon(Icons.sync_rounded, color: Colors.white),
-            tooltip: 'Sync Standard Classes',
+        if (classModel != null)
+          Container(
+            margin: const EdgeInsets.only(right: 8),
+            child: TextButton.icon(
+              onPressed: () => _generateDueListPDF(context, classModel),
+              icon: const Icon(Icons.picture_as_pdf_rounded, color: Colors.white, size: 20),
+              label: const Text('Due List', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              style: TextButton.styleFrom(
+                backgroundColor: Colors.white.withOpacity(0.15),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              ),
+            ),
           ),
-        ),
       ],
       flexibleSpace: FlexibleSpaceBar(
         background: Container(
@@ -464,21 +452,12 @@ class _FeeManagementScreenState extends State<FeeManagementScreen>
       print('Error loading processed months: $e');
     }
 
+
     String? selectedMonth;
     final months = [
       'April', 'May', 'June', 'July', 'August', 'September', 
       'October', 'November', 'December', 'January', 'February', 'March'
     ];
-
-    // Auto-tick logic: Pre-select current month if it's the target day or Auto Pilot is on
-    if (_isAutoPilotEnabled == true) {
-      selectedMonth = DateFormat('MMMM').format(DateTime.now());
-      // Special check: Only pre-select if not already processed
-      final year = _calculateYearForMonth(selectedMonth, currentSession);
-      if (processedMonths.contains("$selectedMonth $year")) {
-        selectedMonth = null;
-      }
-    }
 
     if (!context.mounted) return;
 
@@ -495,77 +474,75 @@ class _FeeManagementScreenState extends State<FeeManagementScreen>
               const Text('Process Monthly Fees'),
             ],
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text("1. Session (Auto-selected)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey)),
-              const SizedBox(height: 4),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                decoration: BoxDecoration(
-                  color: Colors.indigo.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.indigo.withOpacity(0.3)),
-                ),
-                child: Text(
-                  currentSession,
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.indigo),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text("2. Select Month to Process", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey)),
-              const SizedBox(height: 8),
-              Container(
-                 constraints: const BoxConstraints(maxHeight: 200),
-                 child: SingleChildScrollView(
-                   child: Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: months.map((month) {
-                      final year = _calculateYearForMonth(month, currentSession);
-                      final fullMonthName = "$month $year";
-                      final isProcessed = processedMonths.contains(fullMonthName);
-                      final isSelected = selectedMonth == month;
-
-                      return ChoiceChip(
-                        label: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(month),
-                            if (isProcessed) ...[
-                              const SizedBox(width: 4),
-                              const Icon(Icons.check, size: 14, color: Colors.white),
-                            ]
-                          ],
-                        ),
-                        selected: isSelected || isProcessed,
-                        selectedColor: isProcessed ? Colors.green : Colors.indigo,
-                        backgroundColor: isProcessed ? Colors.green.withOpacity(0.5) : null,
-                        disabledColor: Colors.green.shade200,
-                        labelStyle: TextStyle(
-                          color: (isSelected || isProcessed) ? Colors.white : Colors.black
-                        ),
-                        onSelected: isProcessed ? null : (selected) {
-                           setState(() => selectedMonth = selected ? month : null);
-                        },
-                      );
-                    }).toList(),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text("1. Session (Auto-selected)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey)),
+                const SizedBox(height: 4),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.indigo.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.indigo.withOpacity(0.3)),
                   ),
-                 ),
-              ),
-              if (selectedMonth != null) ...[
-                const SizedBox(height: 16),
-                Text(
-                  "Processing for: $selectedMonth ${_calculateYearForMonth(selectedMonth!, currentSession)}",
-                  style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: Colors.green[700]),
+                  child: Text(
+                    currentSession,
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.indigo),
+                  ),
                 ),
+                const SizedBox(height: 16),
+                const SizedBox(height: 16),
+                Text("2. Select Month to Process", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: months.map((month) {
+                    final year = _calculateYearForMonth(month, currentSession);
+                    final fullMonthName = "$month $year";
+                    final isProcessed = processedMonths.contains(fullMonthName);
+                    final isSelected = selectedMonth == month;
+
+                    return ChoiceChip(
+                      label: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(month),
+                          if (isProcessed) ...[
+                            const SizedBox(width: 4),
+                            const Icon(Icons.check, size: 14, color: Colors.white),
+                          ]
+                        ],
+                      ),
+                      selected: isSelected || isProcessed,
+                      selectedColor: isProcessed ? Colors.green : Colors.indigo,
+                      backgroundColor: isProcessed ? Colors.green.withOpacity(0.5) : null,
+                      disabledColor: Colors.green.shade200,
+                      labelStyle: TextStyle(
+                        color: (isSelected || isProcessed) ? Colors.white : Colors.black
+                      ),
+                      onSelected: isProcessed ? null : (selected) {
+                         setState(() => selectedMonth = selected ? month : null);
+                      },
+                    );
+                  }).toList(),
+                ),
+                if (selectedMonth != null) ...[
+                  const SizedBox(height: 16),
+                  Text(
+                    "Processing for: $selectedMonth ${_calculateYearForMonth(selectedMonth!, currentSession)}",
+                    style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: Colors.green[700]),
+                  ),
+                ],
+                const SizedBox(height: 16),
+                const Text('This will add monthly charges to ALL students in ALL classes.', 
+                  style: TextStyle(fontSize: 12, color: Colors.grey)),
               ],
-              const SizedBox(height: 16),
-              const Text('This will add monthly charges to ALL students in ALL classes.', 
-                style: TextStyle(fontSize: 12, color: Colors.grey)),
-            ],
+            ),
           ),
           actions: [
             TextButton(
@@ -592,6 +569,7 @@ class _FeeManagementScreenState extends State<FeeManagementScreen>
       ),
     );
   }
+
 
   String _calculateYearForMonth(String month, String session) {
     // Session format: 2025-26
@@ -841,6 +819,165 @@ class _FeeManagementScreenState extends State<FeeManagementScreen>
         ),
       ),
     );
+  }
+
+  Future<void> _generateDueListPDF(BuildContext context, ClassModel classModel) async {
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    scaffoldMessenger.showSnackBar(
+      const SnackBar(content: Text('Generating Due List PDF...'), duration: Duration(seconds: 2)),
+    );
+
+    try {
+      final schoolService = Provider.of<SchoolInfoService>(context, listen: false);
+      final userService = Provider.of<UserService>(context, listen: false);
+      final busService = Provider.of<BusService>(context, listen: false);
+      
+      final schoolInfo = await schoolService.getSchoolInfo();
+      final students = await userService.getStudentsByClass(classModel.id).first;
+      final destinations = await busService.getDestinations().first;
+      
+      final schoolName = schoolInfo?['name'] ?? 'VEENA PUBLIC SCHOOL';
+      final schoolAddress = schoolInfo?['address'] ?? 'Village - Koni, Post - Koni, Dist - Bilaspur (C.G.)';
+      final now = DateTime.now();
+      final monthName = DateFormat('MMMM').format(now);
+      final year = now.year.toString();
+
+      List<Map<String, dynamic>> studentDataList = [];
+
+      for (var s in students) {
+        final feeConfig = s['feeConfig'] as Map<String, dynamic>? ?? {};
+        double monthlyTotal = 0.0;
+        
+        if (feeConfig['Coaching Fee'] != false) monthlyTotal += classModel.coachingFee;
+        
+        if (feeConfig['Bus Fee'] != false) {
+          final busStopId = s['busStopId']?.toString();
+          final stop = destinations.firstWhere(
+            (d) => d.id == busStopId,
+            orElse: () => BusDestination(id: '', name: '', lat: 0, lng: 0, fee: classModel.busFee),
+          );
+          monthlyTotal += stop.fee;
+        }
+        
+        if (feeConfig['Hostel Fee'] != false) monthlyTotal += classModel.hostelFee;
+        
+        for (var entry in classModel.otherFees.entries) {
+          if (feeConfig[entry.key] != false) monthlyTotal += entry.value;
+        }
+
+        final double currentDue = (s['currentDue'] as num?)?.toDouble() ?? 0.0;
+        
+        double thisMonthDue = monthlyTotal;
+        if (currentDue < monthlyTotal) {
+          thisMonthDue = currentDue;
+        }
+        double previousMonthDue = (currentDue - thisMonthDue).clamp(0, double.infinity);
+
+        studentDataList.add({
+          'name': s['name'] ?? 'Unknown',
+          'admNo': s['admNo'] ?? 'N/A',
+          'phone': s['phone'] ?? 'N/A',
+          'prevDue': previousMonthDue,
+          'thisMonthDue': thisMonthDue,
+          'totalDue': currentDue,
+        });
+      }
+
+      // Sort by total due (descending)
+      studentDataList.sort((a, b) => (b['totalDue'] as double).compareTo(a['totalDue'] as double));
+
+      // Load Logo
+      Uint8List logoData;
+      try {
+        logoData = (await rootBundle.load('assets/logos/logo.png')).buffer.asUint8List();
+      } catch (e) {
+        logoData = Uint8List(0); // Fallback to empty
+      }
+      final logoImage = logoData.isNotEmpty ? pw.MemoryImage(logoData) : null;
+
+      final pdf = pw.Document();
+      
+      pdf.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4.landscape,
+          margin: const pw.EdgeInsets.all(32),
+          header: (pw.Context context) {
+             return pw.Column(
+                  children: [
+                    pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.center,
+                      crossAxisAlignment: pw.CrossAxisAlignment.center,
+                      children: [
+                        if (logoImage != null)
+                          pw.Container(
+                            width: 60,
+                            height: 60,
+                            margin: const pw.EdgeInsets.only(right: 15),
+                            child: pw.Image(logoImage),
+                          ),
+                        pw.Column(
+                          crossAxisAlignment: pw.CrossAxisAlignment.center,
+                          children: [
+                            pw.Text(schoolName.toUpperCase(), style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900)),
+                            pw.SizedBox(height: 2),
+                            pw.Text(schoolAddress, style: const pw.TextStyle(fontSize: 11, color: PdfColors.grey800)),
+                          ],
+                        ),
+                      ],
+                    ),
+                    pw.SizedBox(height: 10),
+                    pw.Divider(thickness: 1, color: PdfColors.blue100),
+                    pw.SizedBox(height: 10),
+                    pw.Text('DUE LIST - ${classModel.name.toUpperCase()}', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold, color: PdfColors.red900)),
+                    pw.Text('(Till $monthName - $year)', style: pw.TextStyle(fontSize: 11, fontStyle: pw.FontStyle.italic, color: PdfColors.grey600)),
+                    pw.SizedBox(height: 15),
+                  ],
+                );
+          },
+          build: (pw.Context context) {
+            return [
+              pw.TableHelper.fromTextArray(
+                headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10),
+                cellStyle: const pw.TextStyle(fontSize: 9),
+                headerDecoration: const pw.BoxDecoration(color: PdfColors.grey300),
+                headers: ['Name', 'ADM.no', 'Mobile no', 'Prev Due', 'This Month Due', 'Total Due', 'Remark/Follow up'],
+                data: studentDataList.map((s) => [
+                  s['name'],
+                  s['admNo'],
+                  s['phone'],
+                  'Rs. ${s['prevDue'].toInt()}',
+                  'Rs. ${s['thisMonthDue'].toInt()}',
+                  'Rs. ${s['totalDue'].toInt()}',
+                  '', // Remarks placeholder
+                ]).toList(),
+              ),
+            ];
+          },
+          footer: (pw.Context context) {
+            return pw.Padding(
+                padding: const pw.EdgeInsets.only(top: 20),
+                child: pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.end,
+                  children: [
+                    pw.Text('Report Generated on: ${DateFormat('dd-MMM-yyyy').format(now)}', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700)),
+                  ],
+                ),
+              );
+          }
+        ),
+      );
+
+      await Printing.layoutPdf(
+        onLayout: (PdfPageFormat format) async => pdf.save(),
+        name: 'Due_List_${classModel.name}_$monthName.pdf',
+      );
+
+    } catch (e) {
+      print('PDF Generation Error: $e');
+      scaffoldMessenger.showSnackBar(
+        SnackBar(backgroundColor: Colors.red, content: Text('Error generating PDF: $e')),
+      );
+    }
   }
 }
 

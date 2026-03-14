@@ -1,11 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/complaint_model.dart';
-import 'ai_service.dart';
 
 class ComplaintService {
   final CollectionReference _complaintsCollection =
       FirebaseFirestore.instance.collection('complaints');
-  final AIService _aiService = AIService();
 
   // Submit a new complaint
   Future<void> submitComplaint(ComplaintModel complaint) async {
@@ -88,54 +86,4 @@ class ComplaintService {
     });
   }
 
-
-  // AI Rewrite for Complaint Description
-  Future<String?> rewriteComplaintWithAI(String originalText, String userName, String userRole, {Map<String, dynamic>? userDetails}) async {
-    String extraDetails = "";
-    if (userDetails != null) {
-      final className = userDetails['classId'] ?? 'N/A';
-      final section = userDetails['section'] ?? 'N/A';
-      final admNo = userDetails['admNo'] ?? 'N/A';
-      extraDetails = "\nUser Details for Signature:\n- Name: $userName\n- Role: $userRole\n- Class: $className\n- Section: $section\n- Admission No: $admNo";
-    }
-
-    final prompt = """
-    You are an AI assistant helping a $userRole named $userName write a formal complaint to the school principal.
-    $extraDetails
-    
-    Task: Rewrite the following complaint draft into a professional, polite, and well-structured formal letter. 
-    The output must be a COMPLETE letter ready to be submitted. 
-    It MUST include:
-    1. A formal Subject line.
-    2. A formal salutation (e.g., Respected Principal,).
-    3. The body of the complaint based on the draft.
-    4. A proper closing (e.g., Sincerely, or Yours obediently,).
-    5. A signature block at the end using the User Details provided above.
-
-    Do NOT add any conversational fillers like "Sure, here is the letter". 
-    Just output the final rewritten complaint letter text itself.
-
-    Original Draft:
-    "$originalText"
-    
-    Rewritten Complaint:
-    """;
-    
-    return await _aiService.generateContent(prompt);
-  }
-
-  // AI Generate Response for Principal
-  Future<String?> generateResponseWithAI(String complaintText, bool isApprove) async {
-    final action = isApprove ? "approving" : "rejecting";
-    final prompt = """
-    You are the Principal of a school. 
-    Write a short, professional, and empathetic response to the following complaint, $action it.
-    
-    Complaint: "$complaintText"
-    
-    Response:
-    """;
-    
-    return await _aiService.generateContent(prompt);
-  }
 }

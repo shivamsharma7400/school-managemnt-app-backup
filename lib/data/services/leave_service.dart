@@ -39,9 +39,14 @@ class LeaveService extends ChangeNotifier {
     });
   }
 
-  Future<void> updateLeaveStatus(String leaveId, String status) async {
+  Future<void> updateLeaveStatus(String leaveId, String status, {String? signatureUrl, String? stampUrl}) async {
     try {
-      await _firestore.collection('leaves').doc(leaveId).update({'status': status});
+      final data = {
+        'status': status,
+        if (signatureUrl != null) 'signatureUrl': signatureUrl,
+        if (stampUrl != null) 'stampUrl': stampUrl,
+      };
+      await _firestore.collection('leaves').doc(leaveId).update(data);
       notifyListeners();
     } catch (e) {
       print('Error updating leave status: $e');

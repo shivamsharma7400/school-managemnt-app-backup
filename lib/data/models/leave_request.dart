@@ -10,6 +10,8 @@ class LeaveRequest {
   final String reason;
   final String status; // 'pending', 'approved', 'rejected'
   final DateTime appliedOn;
+  final String? signatureUrl;
+  final String? stampUrl;
 
   LeaveRequest({
     required this.id,
@@ -21,6 +23,8 @@ class LeaveRequest {
     required this.reason,
     required this.status,
     required this.appliedOn,
+    this.signatureUrl,
+    this.stampUrl,
   });
 
   factory LeaveRequest.fromMap(Map<String, dynamic> data, String documentId) {
@@ -34,6 +38,8 @@ class LeaveRequest {
       reason: data['reason'] ?? '',
       status: data['status'] ?? 'pending',
       appliedOn: (data['appliedOn'] as Timestamp).toDate(),
+      signatureUrl: data['signatureUrl'],
+      stampUrl: data['stampUrl'],
     );
   }
 
@@ -47,6 +53,8 @@ class LeaveRequest {
       'reason': reason,
       'status': status,
       'appliedOn': Timestamp.fromDate(appliedOn),
+      'signatureUrl': signatureUrl,
+      'stampUrl': stampUrl,
     };
   }
 }
